@@ -1,0 +1,75 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0A0C10;
+  --surface: #111318;
+  --surface-elevated: #181C24;
+  --border: #1E2430;
+  --border-active: #2E3A4E;
+  --primary: #1A6EFF;
+  --primary-muted: #1A3A6E;
+  --accent: #F5A623;
+  --success: #22C55E;
+  --danger: #EF4444;
+  --text-primary: #E8ECF4;
+  --text-secondary: #8B96A8;
+  --text-muted: #4A5568;
+  --stamp-red: #CC2200;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
+}
+
+.inspection-app {
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+}
+
+input, textarea, select {
+  font-family: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-active);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+::selection {
+  background: var(--primary-muted);
+  color: var(--text-primary);
+}
+
+@layer utilities {
+  .glow-primary {
+    box-shadow: 0 0 0 1px var(--primary);
+  }
+  .glow-accent {
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+}

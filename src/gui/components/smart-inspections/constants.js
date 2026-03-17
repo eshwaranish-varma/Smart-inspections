@@ -1,0 +1,112 @@
+export const TITLE_21_CFR = {
+  metadata: {
+    title: "Title 21 — Food and Drugs",
+    source: "Electronic Code of Federal Regulations (eCFR)",
+    updated: "April 1, 2025",
+    url: "https://www.ecfr.gov/current/title-21",
+  },
+  parts: [
+    { part: "21 CFR 11", title: "Electronic Records; Electronic Signatures", category: "General" },
+    { part: "21 CFR 50", title: "Protection of Human Subjects", category: "General" },
+    { part: "21 CFR 56", title: "Institutional Review Boards", category: "General" },
+    { part: "21 CFR 58", title: "Good Laboratory Practice for Nonclinical Laboratory Studies", category: "General" },
+    { part: "21 CFR 101", title: "Food Labeling", category: "Food for Human Consumption" },
+    { part: "21 CFR 117", title: "Current Good Manufacturing Practice, Hazard Analysis, and Risk-Based Preventive Controls for Human Food", category: "Food for Human Consumption" },
+    { part: "21 CFR 123", title: "Fish and Fishery Products", category: "Food for Human Consumption" },
+    { part: "21 CFR 201", title: "Labeling", category: "Drugs for Human Use" },
+    { part: "21 CFR 210", title: "Current Good Manufacturing Practice in Manufacturing, Processing, Packing, or Holding of Drugs; General", category: "Drugs for Human Use" },
+    { part: "21 CFR 211", title: "Current Good Manufacturing Practice for Finished Pharmaceuticals", category: "Drugs for Human Use" },
+    { part: "21 CFR 211.22", title: "Responsibilities of Quality Control Unit", category: "Drugs for Human Use" },
+    { part: "21 CFR 211.68", title: "Automatic, Mechanical, and Electronic Equipment", category: "Drugs for Human Use" },
+    { part: "21 CFR 211.113", title: "Control of Microbiological Contamination", category: "Drugs for Human Use" },
+    { part: "21 CFR 211.192", title: "Production Record Review", category: "Drugs for Human Use" },
+    { part: "21 CFR 600", title: "Biological Products: General", category: "Biologics" },
+    { part: "21 CFR 801", title: "Labeling", category: "Medical Devices" },
+    { part: "21 CFR 803", title: "Medical Device Reporting", category: "Medical Devices" },
+    { part: "21 CFR 820", title: "Quality System Regulation", category: "Medical Devices" },
+    { part: "21 CFR 830", title: "Unique Device Identification", category: "Medical Devices" },
+    { part: "21 CFR 1271", title: "Human Cells, Tissues, and Cellular and Tissue-Based Products", category: "Human Cells/Tissues" },
+  ],
+};
+
+export const mockDB = {
+  users: [
+    { id: 1, name: "Dr. Sarah Chen", email: "s.chen@fda.gov", role: "Senior Investigator", district: "New England", avatar: "SC", verified: true, phone: "+1-617-555-0142" },
+    { id: 2, name: "Marcus Rodriguez", email: "m.rodriguez@fda.gov", role: "Investigator", district: "New York-Newark", avatar: "MR", verified: true, phone: "+1-212-555-0198" },
+  ],
+  inspections: [
+    {
+      id: "INS-2025-0041",
+      firm: "BioSynth Pharmaceuticals LLC",
+      fei: "3004567890",
+      address: "1200 Industrial Parkway, Cambridge, MA 02139",
+      status: "completed",
+      classification: "OAI",
+      startDate: "2025-01-15",
+      endDate: "2025-01-19",
+      investigator: "Dr. Sarah Chen",
+      observations: 4,
+      hasSignature: true,
+      archived: false,
+      documents: [
+        { name: "FDA-483.pdf", type: "483", size: "1.2 MB", date: "2025-01-19", url: "#" },
+        { name: "EIR-Narrative.pdf", type: "EIR", size: "3.4 MB", date: "2025-01-25", url: "#" },
+      ],
+      observationList: [
+        { id: 1, cfr: "21 CFR 211.113(b)", text: "Procedures designed to prevent microbiological contamination were not established.", evidence: "EM Log #2024-047", status: "verified" },
+        { id: 2, cfr: "21 CFR 211.192", text: "Production and control records were not reviewed by the quality unit.", evidence: "Batch Record BR-2024-119", status: "verified" },
+      ],
+    },
+    {
+      id: "INS-2025-0038",
+      firm: "NutriCore Foods Inc.",
+      fei: "1002345678",
+      address: "500 Commerce Blvd, Newark, NJ 07102",
+      status: "in_progress",
+      classification: "VAI",
+      startDate: "2025-02-10",
+      endDate: null,
+      investigator: "Marcus Rodriguez",
+      observations: 2,
+      hasSignature: false,
+      archived: false,
+      documents: [{ name: "Draft-483.pdf", type: "483-draft", size: "0.8 MB", date: "2025-02-12", url: "#" }],
+      observationList: [
+        { id: 1, cfr: "21 CFR 117.80", text: "Monitoring procedures for the food safety plan were not implemented as written.", evidence: "Monitoring Log ML-2025-02", status: "pending" },
+      ],
+    },
+  ],
+  notifications: [
+    { id: 1, type: "alert", message: "FDA-483 for INS-2025-0041 requires signature verification", time: "2h ago", read: false },
+    { id: 2, type: "info", message: "New CFR update: 21 CFR 117 amended effective March 2025", time: "1d ago", read: false },
+    { id: 3, type: "success", message: "EIR for INS-2025-0038 generated successfully", time: "2d ago", read: true },
+  ],
+};
+
+export const defaultInspectionForm = {
+  firm: "",
+  fei: "",
+  address: "",
+  city: "",
+  state: "",
+  zip: "",
+  country: "United States",
+  estType: "",
+  startDate: "",
+  endDate: "",
+  district: "",
+  investigators: "",
+  notes: "",
+  cfr: "",
+};
+
+export const navItems = [
+  { id: "dashboard", icon: "home", label: "Dashboard" },
+  { id: "new_inspection", icon: "plus", label: "New Inspection" },
+  { id: "observations", icon: "chart", label: "FY2025 Observations" },
+  { id: "documents", icon: "file", label: "Document Library" },
+  { id: "cfr", icon: "book", label: "CFR Title 21" },
+  { id: "signatures", icon: "signature", label: "Signatures" },
+  { id: "archive", icon: "archive", label: "Archive" },
+  { id: "settings", icon: "settings", label: "Settings" },
+];
