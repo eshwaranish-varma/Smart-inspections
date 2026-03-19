@@ -5,12 +5,29 @@
 @tailwind utilities;
 
 :root {
+  --background: #ffffff;
+  --surface: #f8fafc;
+  --surface-elevated: #eef2f7;
+  --border: #d7deea;
+  --border-active: #a9b7cd;
+  --primary: #1A6EFF;
+  --primary-muted: #dbe7ff;
+  --accent: #F5A623;
+  --success: #22C55E;
+  --danger: #EF4444;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --stamp-red: #CC2200;
+}
+
+.dark {
   --background: #0A0C10;
   --surface: #111318;
   --surface-elevated: #181C24;
   --border: #1E2430;
   --border-active: #2E3A4E;
-  --primary: #1A6EFF;
+  --primary: #60a5fa;
   --primary-muted: #1A3A6E;
   --accent: #F5A623;
   --success: #22C55E;
@@ -32,6 +49,7 @@ body {
   color: var(--text-primary);
   font-family: "IBM Plex Sans", system-ui, sans-serif;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 .inspection-app {
@@ -71,5 +89,8 @@ input, textarea, select {
   }
   .glow-accent {
     box-shadow: 0 0 0 1px var(--accent);
+  }
+  .card-polish {
+    @apply rounded-xl border border-border bg-surface shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg;
   }
 }

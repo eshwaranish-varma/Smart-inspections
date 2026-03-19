@@ -35,8 +35,6 @@ type IconCardItem = {
 };
 
 export default function LandingPage() {
-  const trustChips = ["Evidence-based", "Citation-aware", "Human reviewed"];
-
   const valueStrip = [
     {
       title: "OCR-Ready Evidence Pipeline",
@@ -256,14 +254,14 @@ export default function LandingPage() {
   }) {
     return (
       <div className="max-w-3xl">
-        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#2F7A7A]">
+        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#2F7A7A] dark:text-cyan-300">
           {eyebrow}
         </p>
-        <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#13213C] sm:text-4xl">
+        <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#13213C] dark:text-white sm:text-4xl">
           {title}
         </h2>
         {description ? (
-          <p className="mt-4 text-base leading-8 text-[#4B5565]">{description}</p>
+          <p className="mt-4 text-base leading-8 text-[#4B5565] dark:text-slate-300">{description}</p>
         ) : null}
       </div>
     );
@@ -283,13 +281,13 @@ export default function LandingPage() {
           return (
             <div
               key={item.title}
-              className="rounded-3xl border border-[#D9E1EC] bg-white p-6 shadow-[0_10px_25px_rgba(16,41,74,0.06)]"
+              className="rounded-xl border border-[#D9E1EC] bg-white p-6 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-slate-900"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF5FA] text-[#0B1F3A]">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF5FA] text-[#0B1F3A] dark:bg-slate-800 dark:text-cyan-300">
                 <Icon className="h-6 w-6" />
               </div>
-              <h3 className="mt-5 text-lg font-semibold text-[#13213C]">{item.title}</h3>
-              <p className="mt-3 text-sm leading-7 text-[#4B5565]">{item.description}</p>
+              <h3 className="mt-5 text-lg font-semibold text-[#13213C] dark:text-white">{item.title}</h3>
+              <p className="mt-3 text-sm leading-7 text-[#4B5565] dark:text-slate-300">{item.description}</p>
             </div>
           );
         })}
@@ -298,132 +296,60 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="inspection-app min-h-screen bg-[#F7F9FC] text-[#4B5565]">
+    <div className="inspection-app min-h-screen bg-[#F7F9FC] text-[#4B5565] transition-colors duration-300 dark:bg-slate-950 dark:text-slate-200">
       <LandingNavbar />
 
       <main>
-        <section className="relative overflow-hidden border-b border-[#D9E1EC] bg-[linear-gradient(180deg,#f7f9fc_0%,#eef4fb_56%,#f7f9fc_100%)] pt-36">
-          <div className="absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_top_right,rgba(47,122,122,0.12),transparent_34%),radial-gradient(circle_at_left,rgba(11,31,58,0.10),transparent_30%)]" />
-          <div className="relative mx-auto grid max-w-7xl gap-14 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:px-8">
-            <div className="max-w-2xl">
-              <p className="inline-flex items-center rounded-full border border-[#D9E1EC] bg-white px-4 py-2 text-sm font-semibold text-[#2F7A7A] shadow-sm">
-                FDA-Regulated Documentation Support
-              </p>
-              <h1 className="mt-6 text-4xl font-bold tracking-tight text-[#13213C] sm:text-5xl lg:text-6xl">
-                Transform Inspection Evidence into FDA-Compliant Drafts
-              </h1>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-[#4B5565]">
-                Smart Inspections helps investigators move from notes, images, and scanned
-                records to review-ready FDA 483 and EIR drafts with OCR extraction,
-                evidence structuring, regulatory grounding, and human review before
-                finalization.
-              </p>
+        <section
+          className="relative flex min-h-[90vh] w-full items-center overflow-hidden border-b border-[#D9E1EC] bg-cover bg-center bg-no-repeat pt-36 py-16 md:py-24"
+          style={{ backgroundImage: "url('/landing/smart-inspections-hero.png')" }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-transparent" />
+          <div className="relative z-10 mx-auto w-full max-w-7xl px-6">
+            <div className="max-w-3xl">
+              <div className="rounded-xl bg-black/20 p-6 backdrop-blur-sm md:p-8">
+                <p className="inline-flex items-center rounded-full border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm">
+                  FDA-Regulated Documentation Support
+                </p>
+                <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight text-white md:text-6xl">
+                  Transform Inspection Evidence into FDA-Compliant Drafts
+                </h1>
+                <p className="mt-6 max-w-2xl text-lg leading-8 text-gray-200 md:text-xl">
+                  Smart Inspections helps investigators move from notes, images, and scanned
+                  records to review-ready FDA 483 and EIR drafts with OCR extraction,
+                  evidence structuring, regulatory grounding, and human review before
+                  finalization.
+                </p>
 
-              <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-                <Link
-                  href="/login"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0B1F3A] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(11,31,58,0.18)] transition-colors hover:bg-[#10294A]"
-                >
-                  Start New Inspection
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link
-                  href="#workflow"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#D9E1EC] bg-white px-6 py-3.5 text-sm font-semibold text-[#13213C] shadow-sm transition-colors hover:bg-[#F7F9FC]"
-                >
-                  View Workflow
-                  <ChevronRight className="h-4 w-4" />
-                </Link>
-              </div>
-
-              <div className="mt-8 flex flex-wrap gap-3">
-                {trustChips.map((chip) => (
-                  <span
-                    key={chip}
-                    className="rounded-full border border-[#D9E1EC] bg-white px-4 py-2 text-sm font-medium text-[#13213C] shadow-sm"
+                <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+                  <Link
+                    href="/login"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-semibold text-black shadow-[0_12px_24px_rgba(11,31,58,0.18)] transition-colors hover:bg-gray-100"
                   >
-                    {chip}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="absolute -left-8 top-14 hidden h-24 w-24 rounded-full bg-[#F5A623]/15 blur-3xl lg:block" />
-              <div className="absolute -right-4 -top-4 hidden h-24 w-24 rounded-full bg-[#2F7A7A]/15 blur-3xl lg:block" />
-              <div className="relative rounded-[32px] border border-[#D9E1EC] bg-white p-6 shadow-[0_24px_60px_rgba(16,41,74,0.12)]">
-                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#D9E1EC] pb-5">
-                  <div>
-                    <p className="text-sm font-semibold text-[#13213C]">Inspection Drafting Workflow</p>
-                    <p className="mt-1 text-sm text-[#4B5565]">
-                      Evidence ingestion through investigator-reviewed output.
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-[#EEF5FA] px-3 py-1 text-xs font-semibold text-[#2F7A7A]">
-                    Review-ready pipeline
-                  </span>
+                    Start New Inspection
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  <Link
+                    href="#workflow"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white bg-transparent px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-white/10"
+                  >
+                    View Workflow
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
                 </div>
 
-                <div className="mt-6 space-y-3">
-                  {[
-                    { label: "Inspection Notes / Photos / PDFs", icon: Upload, tone: "bg-[#EEF5FA] text-[#0B1F3A]" },
-                    { label: "OCR Extraction", icon: ScanText, tone: "bg-[#EAF8F8] text-[#2F7A7A]" },
-                    { label: "Evidence Structuring", icon: Network, tone: "bg-[#FFF7E8] text-[#A86610]" },
-                    { label: "AI Draft Observation", icon: Sparkles, tone: "bg-[#EEF5FA] text-[#0B1F3A]" },
-                    { label: "CFR / IOM Validation", icon: BookText, tone: "bg-[#EAF8F8] text-[#2F7A7A]" },
-                    { label: "Investigator Review", icon: ShieldCheck, tone: "bg-[#FFF7E8] text-[#A86610]" },
-                    { label: "FDA 483 / EIR Output", icon: FileOutput, tone: "bg-[#EEF5FA] text-[#0B1F3A]" },
-                  ].map((step, index, steps) => {
-                    const Icon = step.icon;
-                    return (
-                      <div key={step.label}>
-                        <div className="flex items-center gap-4 rounded-2xl border border-[#D9E1EC] bg-[#FCFDFE] px-4 py-4 shadow-sm">
-                          <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${step.tone}`}>
-                            <Icon className="h-5 w-5" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-[#13213C]">{step.label}</p>
-                          </div>
-                        </div>
-                        {index < steps.length - 1 ? (
-                          <div className="flex justify-center py-1.5">
-                            <div className="h-5 w-px bg-gradient-to-b from-[#D9E1EC] to-[#2F7A7A]/50" />
-                          </div>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="border-y border-[#D9E1EC] bg-[#0B1F3A]">
-          <div className="mx-auto grid max-w-7xl gap-4 px-4 py-6 sm:px-6 lg:grid-cols-5 lg:px-8">
-            {valueStrip.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={item.title}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
-                >
-                  <Icon className="h-5 w-5 text-[#F5A623]" />
-                  <h3 className="mt-4 text-sm font-semibold">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">{item.description}</p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <section id="about" className="scroll-mt-28 px-4 py-20 sm:px-6 lg:px-8">
-          <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+        <section id="about" className="scroll-mt-28 py-16 md:py-24">
+          <div className="mx-auto grid max-w-5xl gap-12 px-6 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center">
             <div>
               <SectionHeader
-                eyebrow="Why Smart Inspections Exists"
-                title="Why Smart Inspections Exists"
-                description="Inspection teams must turn fragmented evidence, notes, scanned records, and reference material into formal FDA documentation under time pressure. Smart Inspections exists to reduce manual drafting burden while preserving traceability, regulatory grounding, and human judgment before any output is finalized."
+                eyebrow="Who We Are"
+                title="Who We Are"
+                description="Smart Inspections helps investigators move from notes, images, and scanned records to review-ready FDA 483 and EIR drafts with OCR extraction, evidence structuring, regulatory grounding, and human review before finalization."
               />
               <p className="mt-6 max-w-2xl text-base leading-8 text-[#4B5565]">
                 The platform is designed to support an evidence-first drafting workflow:
@@ -432,31 +358,59 @@ export default function LandingPage() {
                 review each result before it becomes part of a review-ready document set.
               </p>
             </div>
-            <CardGrid items={whyCards} columns="sm:grid-cols-2" />
+            <div className="overflow-hidden rounded-[28px] border border-[#D9E1EC] bg-white p-3 shadow-[0_18px_50px_rgba(16,41,74,0.10)]">
+              <img
+                src="/landing/smart-inspections-hero.png"
+                alt="Smart Inspections landing preview"
+                className="h-full w-full rounded-[22px] object-cover"
+              />
+            </div>
           </div>
         </section>
 
-        <section
-          id="workflow"
-          className="scroll-mt-28 border-y border-[#D9E1EC] bg-white px-4 py-20 sm:px-6 lg:px-8"
-        >
-          <div className="mx-auto max-w-7xl">
+        <section className="border-y border-[#D9E1EC] bg-white/70 py-16 md:py-24">
+          <div className="mx-auto max-w-7xl px-6">
+            <SectionHeader
+              eyebrow="Core Value We Build"
+              title="Core Value We Build"
+              description="Inspection teams must turn fragmented evidence, notes, scanned records, and reference material into formal FDA documentation under time pressure. Smart Inspections exists to reduce manual drafting burden while preserving traceability, regulatory grounding, and human judgment before any output is finalized."
+            />
+            <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+              {whyCards.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.title}
+                    className="rounded-xl border border-[#D9E1EC] bg-white p-6 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF5FA] text-[#0B1F3A]">
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <h3 className="mt-5 text-lg font-semibold text-[#13213C]">{item.title}</h3>
+                    <p className="mt-3 text-sm leading-7 text-[#4B5565]">{item.description}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section id="workflow" className="scroll-mt-28 py-16 md:py-24">
+          <div className="mx-auto max-w-7xl px-6 text-center">
             <SectionHeader
               eyebrow="Workflow"
-              title="How the Inspection Drafting Workflow Works"
+              title="How It Works / Workflow"
               description="A structured process designed for evidence ingestion, AI-assisted drafting, regulatory validation, and investigator review."
             />
-
-            <div className="relative mt-14 grid gap-6 lg:grid-cols-3">
-              <div className="absolute left-8 top-8 hidden h-px w-[calc(100%-4rem)] bg-gradient-to-r from-[#D9E1EC] via-[#2F7A7A]/50 to-[#D9E1EC] lg:block" />
-              {workflowSteps.map((step, index) => {
+            <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+              {[workflowSteps[0], workflowSteps[1], workflowSteps[3], workflowSteps[5]].map((step, index) => {
                 const Icon = step.icon;
                 return (
                   <div
                     key={step.title}
-                    className="relative rounded-3xl border border-[#D9E1EC] bg-[#FCFDFE] p-6 shadow-[0_12px_32px_rgba(16,41,74,0.06)]"
+                    className="relative rounded-xl border border-[#D9E1EC] bg-white p-6 text-left shadow-md"
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="mb-5 flex items-center justify-between">
                       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF5FA] text-[#0B1F3A]">
                         <Icon className="h-6 w-6" />
                       </div>
@@ -464,7 +418,7 @@ export default function LandingPage() {
                         Step {index + 1}
                       </span>
                     </div>
-                    <h3 className="mt-5 text-xl font-semibold text-[#13213C]">{step.title}</h3>
+                    <h3 className="text-xl font-semibold text-[#13213C]">{step.title}</h3>
                     <p className="mt-3 text-sm leading-7 text-[#4B5565]">{step.description}</p>
                   </div>
                 );
@@ -473,172 +427,26 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="capabilities" className="scroll-mt-28 px-4 py-20 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl">
+        <section id="capabilities" className="scroll-mt-28 border-y border-[#D9E1EC] bg-white py-16 md:py-24">
+          <div className="mx-auto max-w-7xl px-6">
             <SectionHeader
-              eyebrow="Core Capabilities"
-              title="Core Capabilities"
+              eyebrow="Highlights"
+              title="What You Get"
               description="Focused capabilities for transforming inspection evidence into structured, review-ready documentation."
             />
-            <div className="mt-14">
-              <CardGrid items={capabilities} columns="md:grid-cols-2 xl:grid-cols-3" />
-            </div>
-          </div>
-        </section>
-
-        <section
-          id="knowledge-base"
-          className="scroll-mt-28 border-y border-[#D9E1EC] bg-white px-4 py-20 sm:px-6 lg:px-8"
-        >
-          <div className="mx-auto max-w-7xl">
-            <SectionHeader
-              eyebrow="Regulatory Knowledge"
-              title="Built on Regulatory Knowledge Sources"
-              description="The drafting experience is informed by inspection-relevant reference sources that support grounded review."
-            />
-            <div className="mt-14">
-              <CardGrid items={knowledgeSources} columns="md:grid-cols-2 xl:grid-cols-4" />
-            </div>
-          </div>
-        </section>
-
-        <section id="traceability" className="scroll-mt-28 px-4 py-20 sm:px-6 lg:px-8">
-          <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-            <div>
-              <SectionHeader
-                eyebrow="Evidence Traceability"
-                title="Every Draft Must Be Defensible"
-                description="Generated observations should remain linked to supporting evidence and regulatory references so investigators can defend the rationale behind each draft statement."
-              />
-              <p className="mt-6 text-base leading-8 text-[#4B5565]">
-                Smart Inspections emphasizes evidence linkage, source visibility, and
-                review checkpoints. Draft language is not treated as final output until an
-                investigator validates the observation, its supporting records, and the
-                applicable regulatory context.
-              </p>
-            </div>
-
-            <div className="rounded-[32px] border border-[#D9E1EC] bg-white p-6 shadow-[0_20px_50px_rgba(16,41,74,0.10)]">
-              <div className="flex items-start justify-between gap-4 border-b border-[#D9E1EC] pb-5">
-                <div>
-                  <p className="text-sm font-semibold text-[#13213C]">Observation Review Panel</p>
-                  <p className="mt-1 text-sm text-[#4B5565]">
-                    Linked evidence and citation context for investigator review.
-                  </p>
-                </div>
-                <span className="rounded-full bg-[#FFF7E8] px-3 py-1 text-xs font-semibold text-[#A86610]">
-                  Pending Review
-                </span>
-              </div>
-
-              <div className="mt-6 rounded-3xl border border-[#D9E1EC] bg-[#FCFDFE] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2F7A7A]">
-                  Observation Title
-                </p>
-                <h3 className="mt-3 text-lg font-semibold text-[#13213C]">
-                  Inadequate microbial contamination prevention controls for sterile product handling
-                </h3>
-
-                <div className="mt-6 grid gap-4 md:grid-cols-2">
-                  <div className="rounded-2xl border border-[#D9E1EC] bg-white p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[#4B5565]">
-                      Supporting Evidence
-                    </p>
-                    <ul className="mt-3 space-y-2 text-sm text-[#13213C]">
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 text-[#2F7A7A]" />
-                        EM Log #2024-047
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 text-[#2F7A7A]" />
-                        Batch record image set
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 text-[#2F7A7A]" />
-                        Investigator note transcript
-                      </li>
-                    </ul>
-                  </div>
-
-                  <div className="rounded-2xl border border-[#D9E1EC] bg-white p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[#4B5565]">
-                      CFR Citation
-                    </p>
-                    <p className="mt-3 text-sm font-semibold text-[#13213C]">21 CFR 211.113(b)</p>
-                    <p className="mt-2 text-sm leading-6 text-[#4B5565]">
-                      Procedures to prevent microbiological contamination of sterile drug
-                      products were not established or followed.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[#EEF5FA] px-4 py-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[#2F7A7A]">
-                      Review Status
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-[#13213C]">
-                      Evidence linked, citation identified, awaiting investigator sign-off
-                    </p>
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      className="rounded-xl border border-[#D9E1EC] bg-white px-4 py-2 text-sm font-medium text-[#13213C]"
-                    >
-                      View Evidence
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-xl bg-[#0B1F3A] px-4 py-2 text-sm font-semibold text-white"
-                    >
-                      Review Observation
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section
-          id="architecture"
-          className="scroll-mt-28 border-y border-[#D9E1EC] bg-[#0B1F3A] px-4 py-20 sm:px-6 lg:px-8"
-        >
-          <div className="mx-auto max-w-7xl">
-            <div className="max-w-3xl">
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#F5A623]">
-                Platform Architecture
-              </p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Platform Architecture Overview
-              </h2>
-              <p className="mt-4 text-base leading-8 text-slate-300">
-                A layered architecture designed to support evidence ingestion, drafting
-                services, knowledge grounding, and document output without obscuring
-                review accountability.
-              </p>
-            </div>
-
-            <div className="mt-14 space-y-5">
-              {architectureLayers.map((layer, index) => {
-                const Icon = layer.icon;
+            <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+              {valueStrip.slice(0, 4).map((item) => {
+                const Icon = item.icon;
                 return (
-                  <div key={layer.title}>
-                    <div className="grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:grid-cols-[auto,1fr]">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-[#F5A623]">
-                        <Icon className="h-7 w-7" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-white">{layer.title}</p>
-                        <p className="mt-2 text-sm leading-7 text-slate-300">{layer.description}</p>
-                      </div>
+                  <div
+                    key={item.title}
+                    className="rounded-xl border border-[#D9E1EC] bg-white p-6 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF5FA] text-[#0B1F3A]">
+                      <Icon className="h-6 w-6" />
                     </div>
-                    {index < architectureLayers.length - 1 ? (
-                      <div className="flex justify-center py-2">
-                        <div className="h-6 w-px bg-gradient-to-b from-white/20 to-[#F5A623]/40" />
-                      </div>
-                    ) : null}
+                    <h3 className="mt-5 text-lg font-semibold text-[#13213C]">{item.title}</h3>
+                    <p className="mt-3 text-sm leading-7 text-[#4B5565]">{item.description}</p>
                   </div>
                 );
               })}
@@ -646,49 +454,196 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="px-4 py-20 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl">
-            <SectionHeader
-              eyebrow="User Roles"
-              title="Built for Different Review Responsibilities"
-              description="Smart Inspections supports the different roles involved in inspection drafting, review, and communication."
-            />
-            <div className="mt-14">
-              <CardGrid items={userRoles} columns="md:grid-cols-3" />
+        <section className="bg-[#0B1F3A] py-16 text-white md:py-24">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="text-center">
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#F5A623]">
+                Platform Preview
+              </p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-5xl">
+                Evidence linkage, source visibility, and review checkpoints
+              </h2>
+              <p className="mx-auto mt-4 max-w-3xl text-base leading-8 text-slate-300">
+                Smart Inspections emphasizes evidence linkage, source visibility, and
+                review checkpoints. Draft language is not treated as final output until an
+                investigator validates the observation, its supporting records, and the
+                applicable regulatory context.
+              </p>
+            </div>
+
+            <div className="mx-auto mt-14 max-w-5xl rounded-[28px] border border-white/10 bg-white/5 p-4 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+              <div className="grid gap-6 rounded-[22px] bg-[#10294A] p-4 lg:grid-cols-[minmax(0,1.1fr)_320px] lg:p-6">
+                <div className="overflow-hidden rounded-[20px] border border-white/10">
+                  <img
+                    src="/landing/smart-inspections-hero.png"
+                    alt="Platform preview"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="flex flex-col justify-between rounded-[20px] border border-white/10 bg-white/5 p-6">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#F5A623]">
+                      Core Capabilities
+                    </p>
+                    <div className="mt-5 space-y-4">
+                      {capabilities.slice(0, 3).map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <div key={item.title} className="flex items-start gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-white">{item.title}</p>
+                              <p className="mt-1 text-sm leading-6 text-slate-300">{item.description}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="mt-8 flex flex-col gap-3 sm:flex-row lg:flex-col">
+                    <Link
+                      href="#workflow"
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3 text-sm font-semibold text-[#13213C] transition-colors hover:bg-[#F7F9FC]"
+                    >
+                      View Workflow
+                      <ChevronRight className="h-4 w-4" />
+                    </Link>
+                    <Link
+                      href="/login"
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/30 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                    >
+                      Start New Inspection
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        <section id="contact" className="scroll-mt-28 px-4 pb-20 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl">
-            <div className="overflow-hidden rounded-[36px] border border-[#D9E1EC] bg-[linear-gradient(135deg,#10294A_0%,#0B1F3A_56%,#2F7A7A_100%)] px-6 py-12 shadow-[0_24px_60px_rgba(16,41,74,0.16)] sm:px-10">
-              <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-                <div className="max-w-2xl">
-                  <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#F5A623]">
-                    Ready to Explore
-                  </p>
-                  <h2 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
-                    Ready to Explore AI-Assisted Inspection Drafting?
-                  </h2>
-                  <p className="mt-4 text-base leading-8 text-slate-200">
-                    Explore a workflow built for evidence ingestion, regulatory grounding,
-                    and human-reviewed drafting across FDA inspection documentation.
-                  </p>
+        <section
+          id="knowledge-base"
+          className="scroll-mt-28 border-y border-[#D9E1EC] bg-white py-16 md:py-24"
+        >
+          <div className="mx-auto max-w-7xl px-6">
+            <SectionHeader
+              eyebrow="Latest Insights / Data"
+              title="Platform Architecture Overview"
+              description="A layered architecture designed to support evidence ingestion, drafting services, knowledge grounding, and document output without obscuring review accountability."
+            />
+            <div className="mt-14 grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]">
+              <div className="rounded-[28px] border border-[#D9E1EC] bg-[#FCFDFE] p-8 shadow-[0_18px_50px_rgba(16,41,74,0.10)]">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EEF5FA] text-[#0B1F3A]">
+                    <Layers3 className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[#13213C]">Web Application Layer</p>
+                    <p className="mt-1 text-sm text-[#4B5565]">
+                      Public landing experience, authenticated inspection workflow, review interfaces, and document preview.
+                    </p>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <Link
-                    href="/signup"
-                    className="inline-flex items-center justify-center rounded-2xl bg-white px-6 py-3.5 text-sm font-semibold text-[#13213C] shadow-sm transition-colors hover:bg-[#F7F9FC]"
-                  >
-                    Create Account
-                  </Link>
-                  <Link
-                    href="/login"
-                    className="inline-flex items-center justify-center rounded-2xl border border-white/30 px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-                  >
-                    Sign In
-                  </Link>
+                <div className="mt-8 grid gap-4 md:grid-cols-2">
+                  {architectureLayers.slice(1).map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div key={item.title} className="rounded-2xl border border-[#D9E1EC] bg-white p-5">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EEF5FA] text-[#0B1F3A]">
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <h3 className="mt-4 text-base font-semibold text-[#13213C]">{item.title}</h3>
+                        <p className="mt-2 text-sm leading-7 text-[#4B5565]">{item.description}</p>
+                      </div>
+                    );
+                  })}
                 </div>
+              </div>
+
+              <div className="grid gap-6">
+                {knowledgeSources.slice(0, 2).map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={item.title}
+                      className="rounded-[24px] border border-[#D9E1EC] bg-white p-6 shadow-md"
+                    >
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF5FA] text-[#0B1F3A]">
+                        <Icon className="h-6 w-6" />
+                      </div>
+                      <h3 className="mt-5 text-lg font-semibold text-[#13213C]">{item.title}</h3>
+                      <p className="mt-3 text-sm leading-7 text-[#4B5565]">{item.description}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="py-16 md:py-24">
+          <div className="mx-auto max-w-7xl px-6">
+            <SectionHeader
+              eyebrow="Recent Inspection Stories / Use Cases"
+              title="Built for Different Review Responsibilities"
+              description="Smart Inspections supports the different roles involved in inspection drafting, review, and communication."
+            />
+            <div className="mt-14 grid gap-6 md:grid-cols-3">
+              {userRoles.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.title}
+                    className="rounded-xl border border-[#D9E1EC] bg-white p-6 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF5FA] text-[#0B1F3A]">
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <h3 className="mt-5 text-lg font-semibold text-[#13213C]">{item.title}</h3>
+                    <p className="mt-3 text-sm leading-7 text-[#4B5565]">{item.description}</p>
+                    <Link
+                      href="/login"
+                      className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[#0B1F3A] transition-colors hover:text-[#2F7A7A]"
+                    >
+                      Read more
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section id="contact" className="scroll-mt-28 pb-20 pt-8">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="overflow-hidden rounded-[36px] border border-[#D9E1EC] bg-[linear-gradient(135deg,#10294A_0%,#0B1F3A_56%,#2F7A7A_100%)] px-6 py-16 text-center shadow-[0_24px_60px_rgba(16,41,74,0.16)] sm:px-10">
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#F5A623]">
+                Final CTA
+              </p>
+              <h2 className="mx-auto mt-3 max-w-4xl text-3xl font-bold text-white md:text-5xl">
+                Ready to Explore AI-Assisted Inspection Drafting?
+              </h2>
+              <p className="mx-auto mt-4 max-w-3xl text-base leading-8 text-slate-200">
+                Explore a workflow built for evidence ingestion, regulatory grounding,
+                and human-reviewed drafting across FDA inspection documentation.
+              </p>
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <Link
+                  href="/login"
+                  className="inline-flex items-center justify-center rounded-2xl bg-white px-6 py-3.5 text-sm font-semibold text-[#13213C] shadow-sm transition-colors hover:bg-[#F7F9FC]"
+                >
+                  Start Inspection
+                </Link>
+                <Link
+                  href="#workflow"
+                  className="inline-flex items-center justify-center rounded-2xl border border-white/30 px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                >
+                  View Workflow
+                </Link>
               </div>
             </div>
           </div>
@@ -696,8 +651,8 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t border-[#D9E1EC] bg-white">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(0,0.7fr))] lg:px-8">
-          <div>
+        <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-12 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-md">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#0B1F3A] text-sm font-bold text-white">
                 SI
@@ -709,49 +664,47 @@ export default function LandingPage() {
                 </p>
               </div>
             </div>
-            <p className="mt-5 max-w-md text-sm leading-7 text-[#4B5565]">
+            <p className="mt-5 text-sm leading-7 text-[#4B5565]">
               Smart Inspections is a regulatory-focused drafting platform designed to help
               investigators move from evidence collection to review-ready documentation
               with OCR support, AI assistance, citation grounding, and investigator review.
             </p>
-            <p className="mt-5 text-sm leading-7 text-[#4B5565]">
-              Built as a capstone collaboration with Precise Software Solutions, Inc. and
-              George Mason University.
-            </p>
           </div>
 
-          {footerSections.map((section) => (
-            <div key={section.heading}>
-              <h3 className="text-sm font-semibold text-[#13213C]">{section.heading}</h3>
-              <ul className="mt-4 space-y-3 text-sm text-[#4B5565]">
-                {section.links.map((link) => (
-                  <li key={link.label}>
-                    <Link href={link.href} className="transition-colors hover:text-[#13213C]">
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            {footerSections.map((section) => (
+              <div key={section.heading}>
+                <h3 className="text-sm font-semibold text-[#13213C]">{section.heading}</h3>
+                <ul className="mt-4 space-y-3 text-sm text-[#4B5565]">
+                  {section.links.map((link) => (
+                    <li key={link.label}>
+                      <Link href={link.href} className="transition-colors hover:text-[#13213C]">
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
 
-          <div>
-            <h3 className="text-sm font-semibold text-[#13213C]">Contact</h3>
-            <div className="mt-4 space-y-3 text-sm text-[#4B5565]">
-              <p className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-[#2F7A7A]" />
-                smart-inspections@capstone.local
-              </p>
-              <p className="flex items-center gap-2">
-                <Map className="h-4 w-4 text-[#2F7A7A]" />
-                Regulatory-AI product experience
-              </p>
+            <div>
+              <h3 className="text-sm font-semibold text-[#13213C]">Contact</h3>
+              <div className="mt-4 space-y-3 text-sm text-[#4B5565]">
+                <p className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-[#2F7A7A]" />
+                  smart-inspections@capstone.local
+                </p>
+                <p className="flex items-center gap-2">
+                  <Map className="h-4 w-4 text-[#2F7A7A]" />
+                  Regulatory-AI product experience
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="border-t border-[#D9E1EC]">
-          <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 text-sm text-[#4B5565] sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+          <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-5 text-sm text-[#4B5565] lg:flex-row lg:items-center lg:justify-between">
             <p>All outputs require human review before finalization.</p>
             <p>© 2026 Smart Inspections. Designed for high-trust regulatory drafting support.</p>
           </div>

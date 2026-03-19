@@ -63,6 +63,12 @@ export default function Library() {
     return normalized.replace(/_/g, ' ').toUpperCase();
   };
 
+  const formatFeiNumber = (value: string) => {
+    const digitsOnly = value.replace(/\D+/g, '');
+    if (!digitsOnly) return '—';
+    return digitsOnly.slice(-10).padStart(10, '0');
+  };
+
   const status483Label = (item: DocumentLibraryItem) => {
     const type = item.document_type.toLowerCase();
     const status = item.status.toLowerCase();
@@ -141,7 +147,9 @@ export default function Library() {
                 {items.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="whitespace-nowrap px-4 py-3 text-gray-700">{item.firm_name}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-gray-600">{item.fei_number}</td>
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-gray-600">
+                      {formatFeiNumber(item.fei_number)}
+                    </td>
                     <td className="whitespace-nowrap px-4 py-3">
                       {item.inspection_start ? format(new Date(item.inspection_start), 'MMM d, yyyy') : '—'}
                     </td>

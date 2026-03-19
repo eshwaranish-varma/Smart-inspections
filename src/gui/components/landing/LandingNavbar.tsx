@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import ThemeToggle from "@/components/layout/ThemeToggle";
 
 const navLinks = [
   { href: "#about", label: "About" },
@@ -58,8 +59,8 @@ export default function LandingNavbar() {
         className={[
           "border-b transition-all duration-200",
           scrolled
-            ? "border-[#D9E1EC] bg-white/92 shadow-[0_10px_30px_rgba(11,31,58,0.08)] backdrop-blur-xl"
-            : "border-transparent bg-white/85 backdrop-blur-md",
+            ? "border-[#D9E1EC] bg-white/92 shadow-[0_10px_30px_rgba(11,31,58,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/92"
+            : "border-transparent bg-transparent backdrop-blur-none",
         ].join(" ")}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-4 py-4 sm:px-6 lg:px-8">
@@ -68,10 +69,20 @@ export default function LandingNavbar() {
               SI
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-[#13213C]">
+              <p
+                className={[
+                  "truncate text-sm font-semibold transition-colors",
+                  scrolled ? "text-[#13213C] dark:text-white" : "text-white",
+                ].join(" ")}
+              >
                 Smart Inspections
               </p>
-              <p className="truncate text-xs text-[#4B5565]">
+              <p
+                className={[
+                  "truncate text-xs transition-colors",
+                  scrolled ? "text-[#4B5565] dark:text-slate-300" : "text-slate-200",
+                ].join(" ")}
+              >
                 AI-Assisted FDA Inspection Documentation
               </p>
             </div>
@@ -82,7 +93,12 @@ export default function LandingNavbar() {
               <Link
                 key={link.label}
                 href={link.href}
-                className="text-sm font-medium text-[#4B5565] transition-colors hover:text-[#13213C]"
+                className={[
+                  "text-sm font-medium transition-colors",
+                  scrolled
+                    ? "text-[#4B5565] hover:text-[#13213C] dark:text-slate-300 dark:hover:text-white"
+                    : "text-slate-200 hover:text-white",
+                ].join(" ")}
               >
                 {link.label}
               </Link>
@@ -90,9 +106,15 @@ export default function LandingNavbar() {
           </div>
 
           <div className="hidden items-center gap-3 lg:flex">
+            <ThemeToggle />
             <Link
               href="/login"
-              className="rounded-xl border border-[#D9E1EC] px-4 py-2 text-sm font-medium text-[#13213C] transition-colors hover:bg-[#F7F9FC]"
+              className={[
+                "rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
+                scrolled
+                  ? "border-[#D9E1EC] text-[#13213C] hover:bg-[#F7F9FC] dark:border-white/10 dark:text-white dark:hover:bg-white/10"
+                  : "border-white/25 text-white hover:bg-white/10",
+              ].join(" ")}
             >
               Log In
             </Link>
@@ -107,7 +129,7 @@ export default function LandingNavbar() {
           <button
             type="button"
             onClick={() => setMenuOpen((current) => !current)}
-            className="inline-flex rounded-xl border border-[#D9E1EC] p-2 text-[#13213C] lg:hidden"
+            className="inline-flex rounded-xl border border-[#D9E1EC] bg-white/90 p-2 text-[#13213C] dark:border-white/10 dark:bg-slate-900/90 dark:text-white lg:hidden"
             aria-label="Toggle navigation menu"
             aria-expanded={menuOpen}
           >
@@ -116,22 +138,23 @@ export default function LandingNavbar() {
         </div>
 
         {menuOpen ? (
-          <div className="border-t border-[#D9E1EC] bg-white px-4 py-4 lg:hidden sm:px-6">
+          <div className="border-t border-[#D9E1EC] bg-white px-4 py-4 dark:border-white/10 dark:bg-slate-900 lg:hidden sm:px-6">
             <div className="flex flex-col gap-3">
               {navLinks.map((link) => (
                 <Link
                   key={link.label}
                   href={link.href}
-                  className="text-sm font-medium text-[#4B5565] transition-colors hover:text-[#13213C]"
+                  className="text-sm font-medium text-[#4B5565] transition-colors hover:text-[#13213C] dark:text-slate-300 dark:hover:text-white"
                   onClick={() => setMenuOpen(false)}
                 >
                   {link.label}
                 </Link>
               ))}
-              <div className="mt-2 flex gap-3">
+              <div className="mt-2 flex items-center gap-3">
+                <ThemeToggle />
                 <Link
                   href="/login"
-                  className="flex-1 rounded-xl border border-[#D9E1EC] px-4 py-2 text-center text-sm font-medium text-[#13213C]"
+                  className="flex-1 rounded-xl border border-[#D9E1EC] px-4 py-2 text-center text-sm font-medium text-[#13213C] dark:border-white/10 dark:text-white"
                   onClick={() => setMenuOpen(false)}
                 >
                   Log In

@@ -9,8 +9,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-background text-text-primary antialiased">
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen bg-background text-text-primary antialiased transition-colors duration-300">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var stored=localStorage.getItem('smart-inspections-theme');var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var theme=stored||(prefersDark?'dark':'light');document.documentElement.classList.toggle('dark',theme==='dark');}catch(e){}})();`,
+          }}
+        />
         {children}
         <Toaster
           position="top-right"

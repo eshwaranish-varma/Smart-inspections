@@ -3,49 +3,61 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  ClipboardList,
-  FileText,
+  Activity,
   BookOpen,
-  Library,
+  FileText,
+  FolderOpen,
+  Home,
+  PlusSquare,
   Settings,
-  LogOut,
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
+import UserMenu from "@/components/layout/UserMenu";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/inspections", label: "Inspections", icon: ClipboardList },
-  { href: "/documents/483", label: "Form FDA 483", icon: FileText },
-  { href: "/documents/eir", label: "EIR Documents", icon: BookOpen, badge: "Phase 2" },
-  { href: "/references", label: "Regulatory References", icon: Library },
+  { href: "/dashboard", label: "Home", icon: Home },
+  { href: "/new-inspection", label: "New Inspection", icon: PlusSquare },
+  { href: "/observations", label: "CFR", icon: BookOpen },
+  { href: "/library", label: "Library", icon: FolderOpen },
+  { href: "/references", label: "References", icon: FileText },
+  { href: "/audit-trail", label: "Audit", icon: Activity },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({
+  isOpen,
+  isMobileOpen,
+  onCloseMobile,
+}: {
+  isOpen: boolean;
+  isMobileOpen: boolean;
+  onCloseMobile: () => void;
+}) {
   const pathname = usePathname();
-  const { currentUser, activeInspectionId } = useAppStore();
+  const { activeInspectionId } = useAppStore();
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-60 flex-col border-r border-border bg-surface">
-      <div className="flex items-center gap-2.5 border-b border-border px-4 py-4">
-        <Shield className="h-7 w-7 text-primary" />
-        <span className="font-mono text-xs font-semibold uppercase tracking-widest text-text-primary">
-          Smart Inspections
-        </span>
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-50 flex h-screen flex-col border-r border-gray-200 bg-white/95 shadow-xl backdrop-blur-xl transition-all duration-300 ease-out dark:border-white/10 dark:bg-slate-900/95 md:z-40",
+        isOpen ? "w-60" : "w-[72px]",
+        isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      )}
+      aria-label="Sidebar"
+    >
+      <div className={cn("flex items-center border-b border-gray-200 px-4 py-5 dark:border-white/10", isOpen ? "gap-3" : "justify-center")}>
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B1F3A] to-[#2F7A7A] text-white shadow-sm">
+          <Shield className="h-5 w-5" />
+        </div>
+        <div className={cn("overflow-hidden transition-all duration-300", isOpen ? "w-auto opacity-100" : "w-0 opacity-0")}>
+          <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">Smart Inspections</p>
+          <p className="truncate text-xs text-slate-500 dark:text-slate-400">AI-Assisted FDA 483 Drafting</p>
+        </div>
       </div>
 
-      <div className="border-b border-border px-4 py-3">
-        <p className="font-sans text-sm font-medium text-text-primary">{currentUser.name}</p>
-        <p className="font-mono text-[10px] text-text-secondary">
-          Badge #{currentUser.badgeNumber}
-        </p>
-        <p className="font-mono text-[10px] text-text-muted">{currentUser.districtOffice}</p>
-      </div>
-
-      <nav className="flex-1 overflow-y-auto px-2 py-3">
+      <nav className="flex-1 overflow-y-auto px-3 py-4">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active =
@@ -54,41 +66,37 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onCloseMobile}
+              title={!isOpen ? item.label : undefined}
               className={cn(
-                "mb-0.5 flex items-center gap-3 rounded px-3 py-2 text-sm transition-colors",
+                "mb-1 flex items-center rounded-xl px-3 py-3 text-sm transition-all duration-300",
+                isOpen ? "gap-3" : "justify-center",
                 active
-                  ? "bg-primary-muted text-primary glow-primary"
-                  : "text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
+                  ? "bg-navy-50 text-navy-700 shadow-sm dark:bg-slate-800 dark:text-white"
+                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
               )}
             >
-              <Icon className="h-4 w-4 flex-shrink-0" />
-              <span className="flex-1">{item.label}</span>
-              {item.badge && (
-                <span className="rounded bg-surface-elevated px-1.5 py-0.5 font-mono text-[9px] text-accent">
-                  {item.badge}
-                </span>
-              )}
+              <Icon className={cn("h-[18px] w-[18px] flex-shrink-0", active ? "text-navy-700 dark:text-cyan-300" : "")} />
+              <span className={cn("overflow-hidden whitespace-nowrap transition-all duration-300", isOpen ? "w-auto opacity-100" : "w-0 opacity-0")}>
+                {item.label}
+              </span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-border px-4 py-3">
+      <div className={cn("border-t border-gray-200 px-3 py-4 dark:border-white/10", isOpen ? "space-y-4" : "space-y-3")}>
         {activeInspectionId && (
-          <div className="mb-3 flex items-center gap-2">
+          <div className={cn("flex items-center rounded-xl bg-amber-50 px-3 py-2 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300", isOpen ? "gap-2" : "justify-center")}>
             <span className="h-2 w-2 animate-pulse rounded-full bg-accent" />
-            <span className="font-mono text-[10px] text-accent">
+            <span className={cn("font-mono text-[10px]", isOpen ? "block" : "hidden")}>
               Active: {activeInspectionId}
             </span>
           </div>
         )}
-        <button
-          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-text-muted transition-colors hover:text-danger"
-          aria-label="Logout"
-        >
-          <LogOut className="h-4 w-4" />
-          <span>Logout</span>
-        </button>
+        <div className={cn("flex", isOpen ? "justify-start" : "justify-center")}>
+          <UserMenu compact align="left" />
+        </div>
       </div>
     </aside>
   );

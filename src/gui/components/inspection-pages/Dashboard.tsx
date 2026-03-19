@@ -107,10 +107,10 @@ const REFERENCE_CHUNKS: ReferenceChunk[] = [
 
 function StatSkeleton() {
   return (
-    <div className="animate-pulse rounded-lg border border-gray-100 bg-white p-6 shadow-sm">
-      <div className="mb-3 h-10 w-10 rounded-lg bg-gray-100" />
-      <div className="mb-2 h-8 w-16 rounded bg-gray-100" />
-      <div className="h-4 w-24 rounded bg-gray-100" />
+    <div className="animate-pulse rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900">
+      <div className="mb-3 h-10 w-10 rounded-lg bg-gray-100 dark:bg-slate-800" />
+      <div className="mb-2 h-8 w-16 rounded bg-gray-100 dark:bg-slate-800" />
+      <div className="h-4 w-24 rounded bg-gray-100 dark:bg-slate-800" />
     </div>
   );
 }
@@ -185,17 +185,17 @@ export default function Dashboard() {
   }, [refQuery, sourceFilter]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 md:space-y-10">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
             Welcome to Smart Inspections — your AI-assisted FDA 483 drafting workspace.
           </p>
         </div>
         <Link
           to="/new-inspection"
-          className="inline-flex items-center gap-2 rounded-lg bg-navy-700 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-navy-800"
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0B1F3A] via-[#123d72] to-[#2F7A7A] px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
         >
           <FilePlus className="h-4 w-4" />
           Start New Inspection Draft
@@ -203,47 +203,47 @@ export default function Dashboard() {
       </div>
 
       {isError ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-          <p className="text-sm font-medium text-red-800">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-500/20 dark:bg-red-950/30">
+          <p className="text-sm font-medium text-red-800 dark:text-red-200">
             Unable to reach the backend API. Please ensure the server is running.
           </p>
           <button
             onClick={() => { stats.refetch(); health.refetch(); }}
-            className="mt-3 text-sm font-medium text-red-600 underline hover:text-red-700"
+            className="mt-3 text-sm font-medium text-red-600 underline hover:text-red-700 dark:text-red-300 dark:hover:text-red-200"
           >
             Retry
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {isLoading
             ? Array.from({ length: 4 }).map((_, i) => <StatSkeleton key={i} />)
             : statCards.map(({ label, value, icon: Icon }) => (
-                <div key={label} className="rounded-lg border border-gray-100 bg-white p-6 shadow-sm">
-                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-navy-50">
+                <div key={label} className="card-polish p-6 dark:border-white/10 dark:bg-slate-900">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-navy-50 dark:bg-slate-800">
                     <Icon className="h-5 w-5 text-navy-600" />
                   </div>
-                  <p className="text-3xl font-bold text-gray-900">{value}</p>
-                  <p className="mt-1 text-sm text-gray-500">{label}</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">{value}</p>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{label}</p>
                 </div>
               ))}
         </div>
       )}
 
       <div>
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Quick Links</h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Quick Links</h2>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {quickLinks.map(({ to, title, description, icon: Icon }) => (
             <Link
               key={to}
               to={to}
-              className="group flex flex-col rounded-lg border border-gray-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+              className="group flex flex-col rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-slate-900"
             >
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-navy-50 transition-colors group-hover:bg-navy-100">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-navy-50 transition-colors group-hover:bg-navy-100 dark:bg-slate-800 dark:group-hover:bg-slate-700">
                 <Icon className="h-5 w-5 text-navy-600" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-              <p className="mt-1 flex-1 text-sm text-gray-500">{description}</p>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
+              <p className="mt-1 flex-1 text-sm text-gray-500 dark:text-slate-400">{description}</p>
               <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-navy-600">
                 Open <ArrowRight className="h-3 w-3" />
               </span>
@@ -252,9 +252,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-100 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-gray-900">Regulatory References</h2>
-        <p className="mt-1 text-sm text-gray-500">Browse and search IOM, CFR, and FDA guidance</p>
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Regulatory References</h2>
+        <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">Browse and search IOM, CFR, and FDA guidance</p>
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">

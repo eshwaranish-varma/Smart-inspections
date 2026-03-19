@@ -4,6 +4,8 @@ import { createSessionToken } from "@/lib/auth/auth-service";
 import { getCurrentUserFromRequest } from "@/lib/auth/get-current-user";
 import { setSessionCookie } from "@/lib/auth/session";
 
+export const dynamic = "force-dynamic";
+
 type ProfileRow = {
   id: string;
   first_name: string;
