@@ -174,4 +174,4 @@ Open **http://localhost:3000**
 - **OCR fails**: Ensure Tesseract is installed and on PATH
 - **AI fails**: Check `GOOGLE_API_KEY` or `OPENAI_API_KEY` in `backend/.env`
 - **CORS errors**: Add your frontend origin to `CORS_ORIGINS` in `backend/.env`
-- **Database**: Backend uses SQLite by default; no PostgreSQL needed for core features
+- **Database**: PostgreSQL 
