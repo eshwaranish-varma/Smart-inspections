@@ -58,7 +58,7 @@ The repository ships **three runnable clients** and **one AI/API backend**:
 - **Vite (`frontend`)** — Inspection drafting UI: observations, OCR, AI calls, document generation; calls **FastAPI** at `VITE_API_URL` (e.g. `http://localhost:8000/api`).
 - **FastAPI (`backend`)** — **REST** under `/api/...`: observations (incl. FY2025 Excel), AI, OCR, `.docx` generation, **saved document library** and **audit** via **SQLAlchemy** into **PostgreSQL** (`DATABASE_URL`).
 
-**Persistence:** Configure `**DATABASE_URL`** for both the Next.js pool and the FastAPI engine so **all relational data** (workflow, users, saved documents, audit) lives in **one PostgreSQL database** (see Environment Variables).
+**Persistence:** Configure `DATABASE_URL` for both the Next.js pool and the FastAPI engine so **all relational data** (workflow, users, saved documents, audit) lives in **one PostgreSQL database** (see Environment Variables).
 
 **AI layer (backend):**
 
@@ -167,7 +167,7 @@ All application state below is stored in **PostgreSQL** when `DATABASE_URL` poin
 | **audit_log**       | Audit entries for backend actions.              |
 
 
-DDL reference: `**src/gui/lib/db/schema.sql`**. For existing databases created before workflow tables, apply `**src/gui/lib/db/migration-workflow.sql`** as documented in that file. Tables are also created at runtime via `**ensureAuthTables()**` in `user-service.ts` (and FastAPI `create_all` for its models when the app starts).
+DDL reference: `src/gui/lib/db/schema.sql`. For existing databases created before workflow tables, apply `src/gui/lib/db/migration-workflow.sql` as documented in that file. Tables are also created at runtime via `ensureAuthTables()` in `user-service.ts` (and FastAPI `create_all` for its models when the app starts).
 
 ---
 
@@ -201,7 +201,7 @@ Typical path combining **Vite + FastAPI** drafting with **Next.js** governance:
 
 ### Option 1: Docker (recommended)
 
-Compose loads a **`.env`** file in the repository root (same directory as `docker-compose.yml`). Create **`.env`** and set secrets (`POSTGRES_PASSWORD`, `JWT_SECRET`, LLM keys, SMTP if you use email OTP).
+Compose loads a **`.env`** file in the repository root (same directory as `docker-compose.yml`). Copy `.env.example` to **`.env`(ignored)** and fill all secrets (`POSTGRES_PASSWORD`, `JWT_SECRET`, LLM keys, SMTP if you use email OTP).
 
 From the **repository root**:
 
@@ -260,9 +260,9 @@ npm install
 npm run dev                     # uses Next 16 with --webpack (see package.json)
 ```
 
-**Note:** Next.js **16** defaults to Turbopack; this project uses `**--webpack`** on `dev` and `build` because of a custom `webpack` alias in `next.config.js` (`react-router-dom` compat). Production: `npm run build` then `npm start` (listens on `0.0.0.0:3000`).
+**Note:** Next.js **16** defaults to Turbopack; this project uses `--webpack` on `dev` and `build` because of a custom `webpack` alias in `next.config.js` (`react-router-dom` compat). Production: `npm run build` then `npm start` (listens on `0.0.0.0:3000`).
 
-Interactive API docs: `**http://localhost:8000/docs`**.
+Interactive API docs: http://localhost:8000/docs
 
 ---
 
@@ -299,7 +299,6 @@ Use the **repository root** **`.env.example`** as the template. Copy it to **`.e
 | `/api/references`   | Reference material                                        |
 
 
-Full interactive docs: `**http://localhost:8000/docs`**.
 
 ### Next.js Route Handlers (same origin as GUI, port 3000)
 
@@ -318,7 +317,7 @@ Full interactive docs: `**http://localhost:8000/docs`**.
 
 ## Data & knowledge-base inputs
 
-Typical files under `**data/`**:
+Typical files under `data/`:
 
 
 | Asset                                                              | Role                                                               |
@@ -331,7 +330,7 @@ Typical files under `**data/`**:
 | `rulebooks/*.jsonl` (under `data/`)                                | Rulebook page extracts for offline tooling                         |
 
 
-Offline RAG helpers live under `**scripts/`** (e.g. `**prepare_iom_rag_jsonl.py**`); generated indexes may be written to `**artifacts/**` when you run those pipelines.
+Offline RAG helpers live under `scripts/` (e.g. `prepare_iom_rag_jsonl.py`); generated indexes may be written to `artifacts/` when you run those pipelines.
 
 ---
 
@@ -352,8 +351,8 @@ Add screenshots under `docs/images/` (create folder if needed) and link them her
 
 ## Related Documentation
 
-- `**src/gui/lib/db/schema.sql`** — Full PostgreSQL schema for workflow tables (and seed users).
-- `**src/gui/lib/db/migration-workflow.sql`** — Add workflow tables to older databases.
+- `src/gui/lib/db/schema.sql` — Full PostgreSQL schema for workflow tables (and seed users).
+- `src/gui/lib/db/migration-workflow.sql` — Add workflow tables to older databases.
 
 ---
 
