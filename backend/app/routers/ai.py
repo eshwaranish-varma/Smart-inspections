@@ -1,12 +1,13 @@
 from fastapi import APIRouter, HTTPException
 from app.schemas.inspection import (
     GenerateObservationsRequest, GenerateObservationsResponse,
-    GenerateEIRRequest, EIRNarrative, RefineObservationRequest,
+    GenerateEIRRequest, EIRNarrative, EIRPipelineNarrative, RefineObservationRequest,
     DraftObservation, ValidationResult, ExtractMetadataRequest, ExtractMetadataResponse,
 )
 from app.services.ai_service import AIService
 from app.services.citation_service import CitationService
 from app.config import settings
+from app.deps import get_kb
 
 router = APIRouter()
 
@@ -27,7 +28,6 @@ async def generate_observations(req: GenerateObservationsRequest):
     ai = _get_ai_service()
     citation_service = CitationService(settings.title21_sections_csv)
     
-    from app.deps import get_kb
     kb = get_kb()
     kb_context = kb.query(req.raw_notes[:500]) if kb and kb.is_initialized else []
     example_483 = kb.get_example_483() if kb else ""
@@ -64,14 +64,36 @@ async def generate_observations(req: GenerateObservationsRequest):
 @router.post("/generate-eir", response_model=EIRNarrative)
 async def generate_eir(req: GenerateEIRRequest):
     ai = _get_ai_service()
+    kb = get_kb()
+    combined = (req.raw_notes or "") + "\n" + "\n".join(o.observation_text for o in req.observations)
+    kb_context = kb.query(combined[:1200]) if kb and kb.is_initialized else []
     try:
         return ai.generate_eir_narrative(
             observations=req.observations,
             inspection_metadata=req.inspection_metadata.model_dump(),
             raw_notes=req.raw_notes,
+            kb_context=kb_context,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"EIR generation failed: {str(e)}")
+
+
+@router.post("/generate-eir-pipeline", response_model=EIRPipelineNarrative)
+async def generate_eir_pipeline(req: GenerateEIRRequest):
+    """Post–483 EIR narrative with observation/evidence traceability (separate from /generate-eir)."""
+    ai = _get_ai_service()
+    kb = get_kb()
+    combined = (req.raw_notes or "") + "\n" + "\n".join(o.observation_text for o in req.observations)
+    kb_context = kb.query(combined[:1200]) if kb and kb.is_initialized else []
+    try:
+        return ai.generate_eir_pipeline_narrative(
+            observations=req.observations,
+            inspection_metadata=req.inspection_metadata.model_dump(),
+            raw_notes=req.raw_notes,
+            kb_context=kb_context,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"EIR pipeline generation failed: {str(e)}")
 
 
 @router.post("/refine-observation", response_model=DraftObservation)

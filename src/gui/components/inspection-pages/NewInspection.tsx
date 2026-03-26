@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import axios from 'axios';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useDropzone } from 'react-dropzone';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -23,6 +25,8 @@ import {
   X,
   Eye,
   RefreshCw,
+  ZoomIn,
+  ZoomOut,
   ClipboardList,
   Type,
   ListChecks,
@@ -36,12 +40,15 @@ import type {
 } from '@/types/inspection';
 import {
   generateObservations,
+  generateEIR,
   downloadDocument,
   saveToLibrary,
   processOCR,
   extractInspectionMetadata,
   addObservation,
 } from '@/lib/api';
+import Form483Preview from '@/components/inspection-components/inspection/Form483Preview';
+import EIRPreview from '@/components/inspection-components/inspection/EIRPreview';
 
 const ESTABLISHMENT_TYPES = [
   'Pharmaceutical Manufacturer',
@@ -139,6 +146,9 @@ function normalizeDateForInput(value: string): string {
 
 export default function NewInspection() {
   const qc = useQueryClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const workflowInspectionId = searchParams.get('inspectionId');
   const [step, setStep] = useState(0);
 
   const [metadata, setMetadata] = useState<InspectionMetadata>({
@@ -175,6 +185,222 @@ export default function NewInspection() {
   const [saved, setSaved] = useState(false);
   const [metadataSourceFile, setMetadataSourceFile] = useState<File | null>(null);
   const [metadataAutofilling, setMetadataAutofilling] = useState(false);
+
+  const [eirNarrative, setEirNarrative] = useState<Record<string, string>>({});
+  const [eirPreviewLoading, setEirPreviewLoading] = useState(false);
+  const [docReviewTab, setDocReviewTab] = useState<'483' | 'eir'>('483');
+  const [docReviewZoom, setDocReviewZoom] = useState(1);
+  const [inspectionWorkflowStatus, setInspectionWorkflowStatus] = useState<string | null>(null);
+  const [workflowFdaPipeline, setWorkflowFdaPipeline] = useState(false);
+  const [workflowFdaSequenced, setWorkflowFdaSequenced] = useState(false);
+  const [pipelineEirLoading, setPipelineEirLoading] = useState(false);
+
+  /** FDA sequenced inspections: hide EIR preview/exports until workflow reaches EIR drafting (or later). Legacy inspections (no flag) keep combined 483+EIR preview at draft complete. */
+  const EIR_PREVIEW_ALLOWED = [
+    'eir_drafting',
+    'eir_submitted',
+    'under_review',
+    'rework_required',
+    'eir_approved',
+    'approved',
+    'closed',
+  ];
+  const blockEirUntilEirDrafting = Boolean(
+    workflowInspectionId &&
+      workflowFdaSequenced &&
+      inspectionWorkflowStatus &&
+      !EIR_PREVIEW_ALLOWED.includes(inspectionWorkflowStatus),
+  );
+
+  const collectAllNotes = useCallback((): string => {
+    const parts: string[] = [];
+    if (typedNotes.trim()) parts.push(typedNotes.trim());
+    uploadedFiles.forEach(f => {
+      if (f.ocrText?.trim()) parts.push(f.ocrText.trim());
+    });
+    checklist.forEach(c => {
+      if (c.condition.trim()) {
+        parts.push(`[${c.area}] ${c.condition} | Evidence: ${c.evidence} | CFR: ${c.cfrPart}`);
+      }
+    });
+    return parts.join('\n\n');
+  }, [typedNotes, uploadedFiles, checklist]);
+
+  const step3EirFetched = useRef(false);
+  useEffect(() => {
+    if (step < 3) step3EirFetched.current = false;
+  }, [step]);
+
+  useEffect(() => {
+    if (!workflowInspectionId) return;
+    let active = true;
+
+    const loadInspection = async () => {
+      try {
+        const response = await fetch(`/api/inspections/${workflowInspectionId}`, {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!active || !data.inspection) return;
+        const loaded = data.inspection;
+        const parsedMetadata = (() => {
+          try {
+            return JSON.parse(loaded.metadata_json || '{}');
+          } catch {
+            return {};
+          }
+        })();
+        const parsedObservations = (() => {
+          try {
+            return JSON.parse(loaded.observations_json || '[]');
+          } catch {
+            return [];
+          }
+        })();
+        const st = loaded.status || '';
+        setInspectionWorkflowStatus(st || null);
+        setWorkflowFdaPipeline(Boolean(parsedMetadata.fda_pipeline));
+        const fdaSeq = Boolean(parsedMetadata.fda_sequenced_workflow);
+        setWorkflowFdaSequenced(fdaSeq);
+        const allowEirPreviewContent =
+          !fdaSeq || EIR_PREVIEW_ALLOWED.includes(st);
+        const parsedEir = (() => {
+          try {
+            return JSON.parse(loaded.eir_json || '{}') as Record<string, unknown>;
+          } catch {
+            return {};
+          }
+        })();
+        if (allowEirPreviewContent && Object.keys(parsedEir).length > 0) {
+          const { traceability: _t, ...rest } = parsedEir;
+          setEirNarrative(rest as Record<string, string>);
+        } else {
+          setEirNarrative({});
+        }
+        setMetadata((prev) => ({
+          ...prev,
+          ...parsedMetadata,
+          firm_name: parsedMetadata.firm_name || loaded.firm_name || prev.firm_name,
+          fei_number: parsedMetadata.fei_number || loaded.fei_number || prev.fei_number,
+          establishment_type: parsedMetadata.establishment_type || loaded.establishment_type || prev.establishment_type,
+          district_office: parsedMetadata.district_office || loaded.district_office || prev.district_office,
+          inspection_start: parsedMetadata.inspection_start || loaded.inspection_start || prev.inspection_start,
+          inspection_end: parsedMetadata.inspection_end || loaded.inspection_end || prev.inspection_end,
+        }));
+        setTypedNotes(loaded.raw_notes || '');
+        setObservations(parsedObservations);
+        if (parsedObservations.length > 0) setStep(2);
+      } catch (error) {
+        console.error('Failed to load workflow inspection draft:', error);
+      }
+    };
+
+    loadInspection();
+    return () => {
+      active = false;
+    };
+  }, [workflowInspectionId]);
+
+  const syncWorkflowDraft = useCallback(async (options?: {
+    createVersion?: boolean;
+    versionType?: 'DRAFT' | 'SUBMITTED' | 'REWORK' | 'APPROVED';
+    versionComments?: string;
+    eirJson?: string;
+  }) => {
+    if (!workflowInspectionId) return;
+    const body: Record<string, unknown> = {
+      metadata_json: JSON.stringify(metadata),
+      observations_json: JSON.stringify(observations),
+      raw_notes: collectAllNotes(),
+      create_version: options?.createVersion ?? true,
+      version_type: options?.versionType || 'DRAFT',
+      version_comments: options?.versionComments || 'Draft updated in New Inspection workspace',
+    };
+    if (options?.eirJson !== undefined) {
+      body.eir_json = options.eirJson;
+    }
+    await fetch(`/api/inspections/${workflowInspectionId}/data`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    });
+  }, [workflowInspectionId, metadata, observations, collectAllNotes]);
+
+  const refreshEirPreview = useCallback(async () => {
+    if (observations.length === 0 || blockEirUntilEirDrafting) return;
+    setEirPreviewLoading(true);
+    try {
+      const eir = await generateEIR({
+        observations,
+        inspection_metadata: metadata,
+        raw_notes: collectAllNotes(),
+      });
+      setEirNarrative(eir as unknown as Record<string, string>);
+      toast.success('EIR preview updated');
+    } catch {
+      toast.error('Could not generate EIR preview');
+    } finally {
+      setEirPreviewLoading(false);
+    }
+  }, [observations, metadata, collectAllNotes, blockEirUntilEirDrafting]);
+
+  useEffect(() => {
+    if (step !== 3 || observations.length === 0 || step3EirFetched.current || blockEirUntilEirDrafting) return;
+    step3EirFetched.current = true;
+    let cancelled = false;
+    setEirPreviewLoading(true);
+    generateEIR({
+      observations,
+      inspection_metadata: metadata,
+      raw_notes: collectAllNotes(),
+    })
+      .then((eir) => {
+        if (!cancelled) setEirNarrative(eir as unknown as Record<string, string>);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error('EIR preview could not be loaded. Use Refresh preview.');
+      })
+      .finally(() => {
+        if (!cancelled) setEirPreviewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [step, observations, metadata, collectAllNotes, blockEirUntilEirDrafting]);
+
+  useEffect(() => {
+    if (blockEirUntilEirDrafting) {
+      setDocReviewTab('483');
+      setDocType('483');
+    }
+  }, [blockEirUntilEirDrafting]);
+
+  const runPipelineEirGeneration = useCallback(async () => {
+    if (!workflowInspectionId) return;
+    setPipelineEirLoading(true);
+    try {
+      const res = await fetch(`/api/inspections/${workflowInspectionId}/generate-eir`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(typeof data.error === 'string' ? data.error : 'EIR pipeline generation failed');
+        return;
+      }
+      const eir = data.eir as Record<string, unknown> | undefined;
+      if (eir && typeof eir === 'object') {
+        const { traceability: _tr, ...rest } = eir;
+        setEirNarrative(rest as Record<string, string>);
+      }
+      toast.success('EIR narrative generated (post–483 pipeline)');
+    } finally {
+      setPipelineEirLoading(false);
+    }
+  }, [workflowInspectionId]);
 
   const updateMeta = useCallback(<K extends keyof InspectionMetadata>(key: K, val: InspectionMetadata[K]) => {
     setMetadata(prev => ({ ...prev, [key]: val }));
@@ -223,7 +449,14 @@ export default function NewInspection() {
     setMetadataAutofilling(true);
     try {
       const ocr = await processOCR(metadataSourceFile);
-      const extracted = await extractInspectionMetadata({ raw_text: ocr.full_text });
+      const raw = (ocr.full_text ?? '').trim();
+      if (!raw) {
+        toast.error(
+          'No text could be read from this file. For scanned PDFs, ensure the backend has Tesseract OCR installed.',
+        );
+        return;
+      }
+      const extracted = await extractInspectionMetadata({ raw_text: raw });
       const parsed = extracted.metadata;
       setMetadata(prev => {
         const nextInvestigators =
@@ -254,25 +487,18 @@ export default function NewInspection() {
         };
       });
       toast.success('Metadata auto-filled from uploaded file');
-    } catch {
-      toast.error('Could not auto-fill metadata from this file');
+    } catch (e) {
+      let message = 'Could not auto-fill metadata from this file';
+      if (axios.isAxiosError(e)) {
+        const d = e.response?.data?.detail;
+        if (typeof d === 'string') message = d;
+        else if (d != null) message = JSON.stringify(d);
+        else if (e.message) message = e.message;
+      }
+      toast.error(message);
     } finally {
       setMetadataAutofilling(false);
     }
-  };
-
-  const collectAllNotes = (): string => {
-    const parts: string[] = [];
-    if (typedNotes.trim()) parts.push(typedNotes.trim());
-    uploadedFiles.forEach(f => {
-      if (f.ocrText?.trim()) parts.push(f.ocrText.trim());
-    });
-    checklist.forEach(c => {
-      if (c.condition.trim()) {
-        parts.push(`[${c.area}] ${c.condition} | Evidence: ${c.evidence} | CFR: ${c.cfrPart}`);
-      }
-    });
-    return parts.join('\n\n');
   };
 
   const handleGenerate = async () => {
@@ -289,6 +515,21 @@ export default function NewInspection() {
         cfr_parts: selectedCFR,
       });
       setObservations(resp.observations);
+      if (workflowInspectionId) {
+        await fetch(`/api/inspections/${workflowInspectionId}/data`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            metadata_json: JSON.stringify(metadata),
+            observations_json: JSON.stringify(resp.observations),
+            raw_notes: raw,
+            create_version: true,
+            version_type: 'DRAFT',
+            version_comments: 'AI-generated draft observations updated',
+          }),
+        });
+      }
       toast.success(`Generated ${resp.observations.length} draft observations`);
     } catch {
       toast.error('Failed to generate observations');
@@ -357,12 +598,61 @@ export default function NewInspection() {
   });
 
   const handleDownload = async (type: '483' | 'eir' | 'both') => {
+    if (blockEirUntilEirDrafting && (type === 'eir' || type === 'both')) {
+      toast.error('EIR is available after the EIR drafting phase. Use FDA 483 only until then.');
+      return;
+    }
     setDownloading(type);
     try {
-      await downloadDocument(type, { form_data: metadata, observations });
+      let eirJson: string | undefined;
+      if (type === 'eir' || type === 'both') {
+        const eir = await generateEIR({
+          observations,
+          inspection_metadata: metadata,
+          raw_notes: collectAllNotes(),
+        });
+        setEirNarrative(eir as unknown as Record<string, string>);
+        eirJson = JSON.stringify(eir);
+      }
+      await syncWorkflowDraft({
+        createVersion: true,
+        versionType: 'DRAFT',
+        versionComments: `Prepared ${type.toUpperCase()} export`,
+        ...(eirJson !== undefined ? { eirJson } : {}),
+      });
+      await downloadDocument(type, {
+        form_data: metadata,
+        observations,
+        raw_notes: collectAllNotes(),
+      });
       await saveToLibrary(saveToLibraryPayload(type));
       qc.invalidateQueries({ queryKey: ['library'] });
       toast.success('Document downloaded and saved to library');
+
+      if (workflowInspectionId && type === 'both') {
+        try {
+          const tr = await fetch(`/api/inspections/${workflowInspectionId}/transition`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              transition: 'complete_draft',
+              comments: 'Draft FDA 483 and EIR generated from New Inspection',
+            }),
+          });
+          if (!tr.ok) {
+            const err = await tr.json().catch(() => ({}));
+            toast.info(
+              typeof err?.error === 'string'
+                ? err.error
+                : 'Documents saved. Open the workflow page to mark draft complete if the status did not update.',
+            );
+          }
+        } catch {
+          toast.info('Documents saved. You can update workflow status from the inspection page.');
+        }
+        router.push(`/workflow/${workflowInspectionId}`);
+      }
     } catch {
       toast.error('Download failed');
     } finally {
@@ -372,6 +662,7 @@ export default function NewInspection() {
 
   const handleSaveLibrary = async () => {
     try {
+      await syncWorkflowDraft({ createVersion: true, versionType: 'DRAFT', versionComments: 'Saved current draft to library' });
       await saveToLibrary(saveToLibraryPayload(docType));
       qc.invalidateQueries({ queryKey: ['library'] });
       toast.success('Saved to library');
@@ -1258,6 +1549,97 @@ export default function NewInspection() {
               </div>
             </div>
 
+            {/* Document Review Workspace — matches workflow inspection preview */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-800">Document Review Workspace</h3>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Page-style preview before download.
+                    {blockEirUntilEirDrafting
+                      ? ' EIR preview and exports open after workflow reaches EIR Drafting (FDA 483 → firm → assign EIR → begin EIR draft).'
+                      : ' EIR narrative is generated for review; downloading Both saves it to the inspection and opens workflow.'}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="rounded-lg border border-gray-200 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setDocReviewTab('483')}
+                      className={`rounded-md px-3 py-1.5 text-sm ${docReviewTab === '483' ? 'bg-navy-700 text-white' : 'text-gray-600'}`}
+                    >
+                      FDA 483
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDocReviewTab('eir')}
+                      disabled={blockEirUntilEirDrafting}
+                      title={blockEirUntilEirDrafting ? 'EIR preview opens after EIR drafting phase' : undefined}
+                      className={`rounded-md px-3 py-1.5 text-sm ${docReviewTab === 'eir' ? 'bg-navy-700 text-white' : 'text-gray-600'} disabled:cursor-not-allowed disabled:opacity-40`}
+                    >
+                      EIR
+                    </button>
+                  </div>
+                  {workflowInspectionId &&
+                    workflowFdaPipeline &&
+                    inspectionWorkflowStatus &&
+                    ['eir_assigned', 'eir_drafting', 'rework_required'].includes(inspectionWorkflowStatus) && (
+                    <button
+                      type="button"
+                      onClick={() => void runPipelineEirGeneration()}
+                      disabled={pipelineEirLoading || observations.length === 0}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-navy-300 bg-navy-50 px-3 py-1.5 text-sm font-medium text-navy-800 hover:bg-navy-100 disabled:opacity-50"
+                    >
+                      {pipelineEirLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                      Generate EIR (pipeline)
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setDocReviewZoom(z => Math.max(0.75, z - 0.1))}
+                    className="rounded-lg border border-gray-200 p-2 text-gray-600 hover:bg-gray-50"
+                    aria-label="Zoom out"
+                  >
+                    <ZoomOut className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDocReviewZoom(z => Math.min(1.35, z + 0.1))}
+                    className="rounded-lg border border-gray-200 p-2 text-gray-600 hover:bg-gray-50"
+                    aria-label="Zoom in"
+                  >
+                    <ZoomIn className="h-4 w-4" />
+                  </button>
+                  {docReviewTab === 'eir' && (
+                    <button
+                      type="button"
+                      onClick={() => void refreshEirPreview()}
+                      disabled={eirPreviewLoading || observations.length === 0}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${eirPreviewLoading ? 'animate-spin' : ''}`} />
+                      Refresh EIR preview
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="overflow-auto rounded-2xl bg-slate-100 p-4 max-h-[min(70vh,720px)]">
+                {eirPreviewLoading && docReviewTab === 'eir' ? (
+                  <div className="flex items-center justify-center gap-2 py-16 text-sm text-gray-600">
+                    <Loader2 className="h-5 w-5 animate-spin" /> Generating EIR preview…
+                  </div>
+                ) : (
+                  <div style={{ transform: `scale(${docReviewZoom})`, transformOrigin: 'top center' }}>
+                    {docReviewTab === '483' ? (
+                      <Form483Preview metadata={metadata} observations={observations} watermark="DRAFT" />
+                    ) : (
+                      <EIRPreview metadata={metadata} eir={eirNarrative} observations={observations} />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Document Type Toggle */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <h3 className="text-sm font-semibold text-gray-800 mb-3">Document Type</h3>
@@ -1266,19 +1648,25 @@ export default function NewInspection() {
                   { key: '483' as const, label: '483 Only' },
                   { key: 'eir' as const, label: 'EIR Only' },
                   { key: 'both' as const, label: 'Both' },
-                ] as const).map(opt => (
+                ] as const).map(opt => {
+                  const eirBlocked = blockEirUntilEirDrafting && (opt.key === 'eir' || opt.key === 'both');
+                  return (
                   <button
                     key={opt.key}
-                    onClick={() => setDocType(opt.key)}
+                    type="button"
+                    onClick={() => !eirBlocked && setDocType(opt.key)}
+                    disabled={eirBlocked}
+                    title={eirBlocked ? 'EIR exports after EIR drafting phase' : undefined}
                     className={`px-4 py-2 text-sm font-medium transition-colors ${
                       docType === opt.key
                         ? 'bg-navy-700 text-white'
                         : 'text-gray-600 hover:bg-gray-50'
-                    }`}
+                    } disabled:cursor-not-allowed disabled:opacity-40`}
                   >
                     {opt.label}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

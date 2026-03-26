@@ -41,10 +41,14 @@ export interface GenerateObservationsResponse {
 
 export interface EIRNarrative {
   cover_info: string;
+  purpose_scope: string;
+  regulatory_framework: string;
   background_scope: string;
+  inspection_methodology: string;
   observations_summary: string;
   evidence_descriptions: string;
   chronological_account: string;
+  references_and_citations: string;
 }
 
 export interface ValidationResult {

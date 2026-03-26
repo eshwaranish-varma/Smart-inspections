@@ -10,6 +10,7 @@ import { useAppStore } from "@/lib/store";
 
 const INSPECTION_APP_ROUTES = new Set([
   "/dashboard",
+  "/workflow",
   "/new-inspection",
   "/observations",
   "/library",
@@ -25,8 +26,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const isInspectionDocumentRoute = pathname.startsWith("/document/483/");
+  const isWorkflowDetailRoute = /^\/workflow\/[^/]+$/.test(pathname);
   const isInspectionAppRoute =
-    INSPECTION_APP_ROUTES.has(pathname) || isInspectionDocumentRoute;
+    INSPECTION_APP_ROUTES.has(pathname) || isInspectionDocumentRoute || isWorkflowDetailRoute;
   const pageTitle =
     pathname === "/dashboard"
       ? "Dashboard"

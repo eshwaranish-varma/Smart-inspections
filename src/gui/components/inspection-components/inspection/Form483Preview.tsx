@@ -51,6 +51,8 @@ export default function Form483Preview({
     : metadata.report_issued_to_name;
   const invNames = (metadata.investigators || []).map((inv) => inv.name || '').filter(Boolean).join(', ');
   const invNamesAndTitles = (metadata.investigators || []).map((inv) => `${inv.name || ''}, ${inv.title || ''}`).filter(Boolean);
+  const investigatorDisplay = metadata.investigator_signed_name || invNames;
+  const supervisorDisplay = metadata.supervisor_signed_name || '';
 
   return (
     <div
@@ -215,8 +217,18 @@ export default function Form483Preview({
           {/* Footer: Signature row (3 cols) — matches backend */}
           <tr>
             <td style={labelStyle}>
-              EMPLOYEE(S) SIGNATURE:
-              <div style={{ fontWeight: 'normal', fontSize: FONT_SIZE }}>{invNames}</div>
+              INVESTIGATOR SIGNATURE:
+              {metadata.investigator_signature_image ? (
+                <div style={{ marginTop: '4px' }}>
+                  <img src={metadata.investigator_signature_image} alt="Investigator signature" style={{ maxHeight: '42px', maxWidth: '100%' }} />
+                </div>
+              ) : (
+                <div style={{ fontWeight: 'normal', fontSize: '12pt', fontStyle: 'italic' }}>{metadata.investigator_signature_text || investigatorDisplay}</div>
+              )}
+              <div style={{ fontWeight: 'normal', fontSize: FONT_SIZE }}>{investigatorDisplay}</div>
+              {metadata.investigator_signed_at && (
+                <div style={{ fontWeight: 'normal', fontSize: FONT_SIZE }}>Signed: {metadata.investigator_signed_at}</div>
+              )}
             </td>
             <td style={labelStyle}>
               EMPLOYEE(S) NAME AND TITLE (Print or Type):
@@ -227,8 +239,20 @@ export default function Form483Preview({
               </div>
             </td>
             <td style={labelStyle}>
-              DATE ISSUED:
-              <div style={{ fontWeight: 'normal', fontSize: FONT_SIZE }}>{formatDateIssued()}</div>
+              SUPERVISOR SIGNATURE / DATE ISSUED:
+              {metadata.supervisor_signature_image ? (
+                <div style={{ marginTop: '4px' }}>
+                  <img src={metadata.supervisor_signature_image} alt="Supervisor signature" style={{ maxHeight: '42px', maxWidth: '100%' }} />
+                </div>
+              ) : (
+                <div style={{ fontWeight: 'normal', fontSize: '12pt', fontStyle: 'italic' }}>
+                  {metadata.supervisor_signature_text || supervisorDisplay}
+                </div>
+              )}
+              <div style={{ fontWeight: 'normal', fontSize: FONT_SIZE }}>{supervisorDisplay}</div>
+              <div style={{ fontWeight: 'normal', fontSize: FONT_SIZE }}>
+                {metadata.supervisor_signed_at || formatDateIssued()}
+              </div>
             </td>
           </tr>
 

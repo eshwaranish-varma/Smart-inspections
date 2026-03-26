@@ -19,6 +19,16 @@ class InspectionMetadata(BaseModel):
     investigators: list[dict] = []
     report_issued_to_name: str = ""
     report_issued_to_title: str = ""
+    investigator_signature_type: str = ""
+    investigator_signature_text: str = ""
+    investigator_signature_image: str = ""
+    investigator_signed_name: str = ""
+    investigator_signed_at: str = ""
+    supervisor_signature_type: str = ""
+    supervisor_signature_text: str = ""
+    supervisor_signature_image: str = ""
+    supervisor_signed_name: str = ""
+    supervisor_signed_at: str = ""
 
 class DraftObservation(BaseModel):
     id: str = ""
@@ -61,20 +71,44 @@ class ValidationResult(BaseModel):
     suggestions: list[str] = []
 
 class EIRNarrative(BaseModel):
+    """Narrative body for Establishment Inspection Report (IOM-style; ties to Form FDA 483 items)."""
+
     cover_info: str = ""
+    purpose_scope: str = ""
+    regulatory_framework: str = ""
     background_scope: str = ""
+    inspection_methodology: str = ""
     observations_summary: str = ""
     evidence_descriptions: str = ""
     chronological_account: str = ""
+    references_and_citations: str = ""
 
 class GenerateEIRRequest(BaseModel):
     observations: list[DraftObservation]
     inspection_metadata: InspectionMetadata
     raw_notes: str = ""
 
+
+class EIRPipelineObservationLink(BaseModel):
+    """Evidence-to-text traceability for EIR narrative (links to Form FDA 483 items)."""
+
+    observation_index: int = 0
+    observation_id: str = ""
+    cfr_citation: str = ""
+    evidence_sources: list[str] = []
+    compliance_discussion: str = ""
+
+
+class EIRPipelineNarrative(EIRNarrative):
+    """Post–483 EIR draft: structured narrative plus explicit 483/evidence linkage (not the 483 drafting prompt)."""
+
+    traceability: list[EIRPipelineObservationLink] = []
+
+
 class GenerateDocumentRequest(BaseModel):
     form_data: InspectionMetadata
     observations: list[DraftObservation]
+    raw_notes: str = ""
 
 class OCRResult(BaseModel):
     text_blocks: list[dict]  # [{text, confidence}]

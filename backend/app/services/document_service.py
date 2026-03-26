@@ -11,6 +11,7 @@ from __future__ import annotations
 import io
 import logging
 import zipfile
+import base64
 from datetime import datetime
 from pathlib import Path
 
@@ -134,6 +135,32 @@ def _run(paragraph, text: str, bold=False, size=None, font_name=FONT_NAME):
     r.font.size = size or FONT_SIZE
     r.bold = bold
     return r
+
+
+def _add_signature_content(cell, label: str, signature_image: str, signature_text: str, signed_name: str, signed_at: str):
+    p = cell.paragraphs[0]
+    p.clear()
+    _run(p, label, bold=True, size=LABEL_SIZE)
+    if signature_image and signature_image.startswith("data:image"):
+        try:
+            _, encoded = signature_image.split(",", 1)
+            image_bytes = base64.b64decode(encoded)
+            p_img = cell.add_paragraph()
+            run = p_img.add_run()
+            run.add_picture(io.BytesIO(image_bytes), width=Inches(1.4))
+        except Exception as exc:
+            logger.warning("Could not embed signature image: %s", exc)
+    elif signature_text:
+        p_sig = cell.add_paragraph()
+        _run(p_sig, signature_text, size=Pt(12), font_name="Brush Script MT")
+
+    detail = signed_name or signature_text or ""
+    if detail:
+        p_detail = cell.add_paragraph()
+        _run(p_detail, detail, size=FONT_SIZE)
+    if signed_at:
+        p_date = cell.add_paragraph()
+        _run(p_date, f"Signed: {signed_at}", size=FONT_SIZE)
 
 
 def _label_value_block(cell, label: str, value: str):
@@ -372,9 +399,23 @@ class DocumentService:
             f"{inv.get('name', '')}, {inv.get('title', '')}" for inv in investigators
         )
 
-        _label_value_block(sig_row.cells[0], "EMPLOYEE(S) SIGNATURE:", inv_names)
+        _add_signature_content(
+            sig_row.cells[0],
+            "INVESTIGATOR SIGNATURE:",
+            form_data.investigator_signature_image,
+            form_data.investigator_signature_text,
+            form_data.investigator_signed_name or inv_names,
+            form_data.investigator_signed_at,
+        )
         _label_value_block(sig_row.cells[1], "EMPLOYEE(S) NAME AND TITLE (Print or Type):", inv_titles)
-        _label_value_block(sig_row.cells[2], "DATE ISSUED:", datetime.now().strftime("%m/%d/%Y"))
+        _add_signature_content(
+            sig_row.cells[2],
+            "SUPERVISOR SIGNATURE / DATE ISSUED:",
+            form_data.supervisor_signature_image,
+            form_data.supervisor_signature_text,
+            form_data.supervisor_signed_name,
+            form_data.supervisor_signed_at or datetime.now().strftime("%m/%d/%Y"),
+        )
 
         # ────────────────────────────────────────────────────────────────
         # FOOTER ROW B: Form ID + Website + Page (merged) — cantSplit
@@ -398,11 +439,77 @@ class DocumentService:
         buf.seek(0)
         return buf.read()
 
-    # ── EIR generation (unchanged) ─────────────────────────────────────
+    # ── EIR generation (IOM-style narrative + structured observation table) ─
+
+    @staticmethod
+    def _eir_cell_text(text: str) -> str:
+        return " ".join((text or "").replace("\r", " ").split())
+
+    @staticmethod
+    def _add_eir_observations_table(doc: Document, observations: list[DraftObservation]) -> None:
+        """Table aligned with Form FDA 483 items: CFR, condition, evidence, link to source notes."""
+        h = doc.add_heading("Detailed Findings (Form FDA 483 alignment)", level=2)
+        if h.runs:
+            h.runs[0].font.size = Pt(12)
+        intro = doc.add_paragraph()
+        intro.add_run(
+            "The following table lists each inspectional observation with regulatory citation, "
+            "condition statement, objective evidence, and the excerpt from raw inspection notes supporting documentation."
+        ).font.size = Pt(11)
+        doc.add_paragraph()
+
+        ncols = 5
+        table = doc.add_table(rows=1, cols=ncols)
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        tbl_pr = table._tbl.tblPr
+        if tbl_pr is None:
+            tbl_pr = OxmlElement("w:tblPr")
+            table._tbl.insert(0, tbl_pr)
+        tbl_w = tbl_pr.find(qn("w:tblW"))
+        if tbl_w is None:
+            tbl_w = OxmlElement("w:tblW")
+            tbl_pr.append(tbl_w)
+        tbl_w.set(qn("w:w"), "5000")
+        tbl_w.set(qn("w:type"), "pct")
+        _set_table_borders(table)
+
+        hdr = table.rows[0].cells
+        headers = ("#", "21 CFR citation", "Observation / condition", "Objective evidence", "Source (input notes excerpt)")
+        for i, label in enumerate(headers):
+            hdr[i].paragraphs[0].clear()
+            _run(hdr[i].paragraphs[0], label, bold=True, size=Pt(10))
+            _set_cell_vertical_alignment(hdr[i], "top")
+        _mark_row_as_header(table.rows[0])
+
+        for idx, obs in enumerate(observations, start=1):
+            row = table.add_row()
+            cells = row.cells
+            ev_text = "; ".join(e for e in (obs.evidence_list or []) if (e or "").strip())
+            vals = (
+                str(idx),
+                DocumentService._eir_cell_text(obs.cfr_citation),
+                DocumentService._eir_cell_text(obs.observation_text),
+                DocumentService._eir_cell_text(ev_text),
+                DocumentService._eir_cell_text(obs.source_notes_excerpt),
+            )
+            for ci, val in enumerate(vals):
+                cells[ci].paragraphs[0].clear()
+                _run(cells[ci].paragraphs[0], val or "—", size=Pt(10))
+                _set_cell_vertical_alignment(cells[ci], "top")
+
+        if not observations:
+            row = table.add_row()
+            merged = row.cells[0].merge(row.cells[-1])
+            merged.paragraphs[0].clear()
+            _run(merged.paragraphs[0], "No observations recorded.", size=Pt(10))
+
+        doc.add_paragraph()
 
     @staticmethod
     def generate_eir_document(
-        narrative: EIRNarrative, form_data: InspectionMetadata
+        narrative: EIRNarrative,
+        form_data: InspectionMetadata,
+        observations: list[DraftObservation],
     ) -> bytes:
         doc = Document()
         section = doc.sections[0]
@@ -436,11 +543,36 @@ class DocumentService:
             p.add_run(str(value))
 
         doc.add_page_break()
+
+        sections: list[tuple[str, str]] = []
+        if (narrative.cover_info or "").strip():
+            sections.append(("Cover / identification", narrative.cover_info))
+        sections.extend(
+            [
+                ("1. Purpose and scope", narrative.purpose_scope),
+                ("2. Regulatory framework (21 CFR; IOM documentation practice)", narrative.regulatory_framework),
+                ("3. Background", narrative.background_scope),
+                ("4. Inspection methodology", narrative.inspection_methodology),
+            ]
+        )
+
+        for heading, content in sections:
+            if not (content or "").strip():
+                continue
+            h = doc.add_heading(heading, level=2)
+            if h.runs:
+                h.runs[0].font.size = Pt(12)
+            p = doc.add_paragraph()
+            p.add_run(content).font.size = Pt(11)
+            doc.add_paragraph()
+
+        DocumentService._add_eir_observations_table(doc, observations)
+
         for heading, content in [
-            ("1. Background and Scope", narrative.background_scope),
-            ("2. Observations Summary", narrative.observations_summary),
-            ("3. Evidence Descriptions", narrative.evidence_descriptions),
-            ("4. Chronological Account", narrative.chronological_account),
+            ("5. Discussion of findings", narrative.observations_summary),
+            ("6. Evidence descriptions", narrative.evidence_descriptions),
+            ("7. Chronological account", narrative.chronological_account),
+            ("8. References and citations", narrative.references_and_citations),
         ]:
             h = doc.add_heading(heading, level=2)
             if h.runs:
@@ -448,6 +580,19 @@ class DocumentService:
             p = doc.add_paragraph()
             p.add_run(content or "(To be completed)").font.size = Pt(11)
             doc.add_paragraph()
+
+        doc.add_heading("9. Signatures and Approval", level=2)
+        p_inv = doc.add_paragraph()
+        p_inv.add_run("Investigator: ").bold = True
+        p_inv.add_run(form_data.investigator_signed_name or "")
+        if form_data.investigator_signed_at:
+            p_inv.add_run(f" | Signed: {form_data.investigator_signed_at}")
+
+        p_sup = doc.add_paragraph()
+        p_sup.add_run("Supervisor: ").bold = True
+        p_sup.add_run(form_data.supervisor_signed_name or "")
+        if form_data.supervisor_signed_at:
+            p_sup.add_run(f" | Signed: {form_data.supervisor_signed_at}")
 
         buf = io.BytesIO()
         doc.save(buf)
@@ -461,7 +606,7 @@ class DocumentService:
         narrative: EIRNarrative,
     ) -> bytes:
         doc_483 = DocumentService.generate_483_document(form_data, observations)
-        doc_eir = DocumentService.generate_eir_document(narrative, form_data)
+        doc_eir = DocumentService.generate_eir_document(narrative, form_data, observations)
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
             zf.writestr("FDA_483.docx", doc_483)

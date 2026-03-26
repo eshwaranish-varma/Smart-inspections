@@ -13,6 +13,7 @@ export default function SignupPage() {
     email: "",
     phone: "",
     fdaPosition: "",
+    role: "investigator",
     address: "",
     city: "",
     state: "",
@@ -52,6 +53,7 @@ export default function SignupPage() {
         email: form.email,
         phone: form.phone,
         fdaPosition: form.fdaPosition,
+        role: form.role,
         address: form.address,
         city: form.city,
         state: form.state,
@@ -258,6 +260,19 @@ export default function SignupPage() {
                       {p}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={labelStyle}>Role *</label>
+                <select
+                  name="role"
+                  value={form.role}
+                  onChange={handleChange}
+                  style={{ ...inputStyle, background: "#fff" }}
+                >
+                  <option value="investigator">Field Client Investigator</option>
+                  <option value="supervisor">Supervisory Investigator</option>
                 </select>
               </div>
 

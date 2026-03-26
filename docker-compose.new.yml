@@ -9,7 +9,7 @@ services:
       - ./data:/app/data
       - ./smart_inspections.db:/app/smart_inspections.db
     env_file:
-      - ./backend/.env
+      - ./.env
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:

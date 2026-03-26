@@ -10,16 +10,18 @@ import {
   FolderOpen,
   Settings,
   Shield,
-  Bell,
   BookOpen,
   History,
   LogOut,
   Menu,
+  ClipboardCheck,
 } from 'lucide-react';
 import ProfileMenu from "@/components/profile/ProfileMenu";
+import NotificationBell from "@/components/layout/NotificationBell";
 
 const navItems = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
+  { to: '/workflow', label: 'eNSpect Workflow', icon: ClipboardCheck },
   { to: '/new-inspection', label: 'New Inspection', icon: FilePlus },
   { to: '/observations', label: 'CFR Citations', icon: BarChart3 },
   { to: '/library', label: 'Document Library', icon: FolderOpen },
@@ -214,9 +216,7 @@ export default function Layout() {
             <span className="text-gray-500">AI-Assisted FDA 483 Drafting</span>
           </div>
           <div className="flex items-center gap-4">
-            <button className="relative rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
-              <Bell className="h-5 w-5" />
-            </button>
+            <NotificationBell />
             <ProfileMenu
               profile={profile}
               loading={loadingProfile}

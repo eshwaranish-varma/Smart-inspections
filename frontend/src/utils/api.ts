@@ -13,7 +13,7 @@ api.interceptors.response.use(
       err.response?.data?.error ??
       err.message ??
       'Request failed';
-    console.error('API Error:', msg);
+    console.warn('API Error:', msg);
     return Promise.reject(err);
   }
 );
@@ -60,7 +60,10 @@ export const processOCR = (file: File, isHandwritten: boolean = false) => {
 export const extractInspectionMetadata = (data: { raw_text: string }) =>
   api.post<ExtractMetadataResponse>('/ai/extract-metadata', data).then(r => r.data);
 
-export const downloadDocument = (type: '483' | 'eir' | 'both', data: { form_data: InspectionMetadata; observations: DraftObservation[] }) => {
+export const downloadDocument = (
+  type: '483' | 'eir' | 'both',
+  data: { form_data: InspectionMetadata; observations: DraftObservation[]; raw_notes?: string },
+) => {
   const endpoint = type === '483' ? '/documents/generate-483' : type === 'eir' ? '/documents/generate-eir' : '/documents/generate-both';
   const name = type === 'both' ? 'FDA_Documents.zip' : type === '483' ? 'FDA_483.docx' : 'EIR_Narrative.docx';
   return api.post(endpoint, data, { responseType: 'blob' }).then(r => {

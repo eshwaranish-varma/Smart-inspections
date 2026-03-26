@@ -1,21 +1,47 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Trash2, Download, FolderOpen, AlertTriangle, FileText, X, Loader2, ExternalLink } from 'lucide-react';
+import { Trash2, Download, FolderOpen, AlertTriangle, FileText, X, Loader2, ExternalLink, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { getLibrary, getLibraryItem, deleteLibraryItem, downloadDocument } from '@/lib/api';
-import type { DocumentLibraryItem } from '@/types/inspection';
+import type { ApprovedDocumentRecord, DocumentLibraryItem } from '@/types/inspection';
 import type { InspectionMetadata, DraftObservation } from '@/types/inspection';
 
 export default function Library() {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [deleteTarget, setDeleteTarget] = useState<DocumentLibraryItem | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [openGuardTarget, setOpenGuardTarget] = useState<DocumentLibraryItem | null>(null);
+  const [approvedDocs, setApprovedDocs] = useState<ApprovedDocumentRecord[]>([]);
+  const [approvedLoading, setApprovedLoading] = useState(true);
+  const [approvedYear, setApprovedYear] = useState('');
+  const [approvedStatus, setApprovedStatus] = useState('');
 
   const library = useQuery({ queryKey: ['library'], queryFn: getLibrary });
+
+  useEffect(() => {
+    const loadApproved = async () => {
+      try {
+        setApprovedLoading(true);
+        const search = new URLSearchParams();
+        if (approvedYear) search.set('year', approvedYear);
+        if (approvedStatus) search.set('status', approvedStatus);
+        const response = await fetch(`/api/document-library?${search.toString()}`, {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        const data = await response.json();
+        if (response.ok) setApprovedDocs(data.documents || []);
+      } finally {
+        setApprovedLoading(false);
+      }
+    };
+    loadApproved();
+  }, [approvedYear, approvedStatus]);
 
   const handleDownload = async (item: DocumentLibraryItem) => {
     setDownloadingId(item.id);
@@ -92,12 +118,146 @@ export default function Library() {
     window.open(`/document/483/${item.id}`, '_blank', 'noopener,noreferrer');
   };
 
+  const handleApprovedView = (item: ApprovedDocumentRecord) => {
+    if (item.inspection_id) {
+      router.push(`/workflow/${item.inspection_id}`);
+    }
+  };
+
+  const handleApprovedDownload = async (item: ApprovedDocumentRecord) => {
+    try {
+      const response = await fetch(`/api/document-library?id=${item.id}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to load document');
+      const metadata = JSON.parse(data.document.final_metadata_json || '{}') as InspectionMetadata;
+      const observations = JSON.parse(data.document.final_observations_json || '[]') as DraftObservation[];
+      await downloadDocument('483', { form_data: metadata, observations });
+      toast.success('Approved document downloaded');
+    } catch {
+      toast.error('Download failed');
+    }
+  };
+
+  const handleReopen = async (item: ApprovedDocumentRecord) => {
+    try {
+      const response = await fetch(`/api/document-library/${item.id}/reopen`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to reopen document');
+      toast.success('Created new workflow cycle from approved document');
+      router.push(`/workflow/${data.inspection.id}`);
+    } catch {
+      toast.error('Could not reopen document');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Document Library</h1>
         <p className="mt-1 text-sm text-gray-500">Manage your saved inspection documents.</p>
       </div>
+
+      <div>
+        <h2 className="mb-3 text-lg font-semibold text-gray-900">Approved Documents</h2>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">Year</label>
+            <input
+              value={approvedYear}
+              onChange={(e) => setApprovedYear(e.target.value)}
+              placeholder="2026"
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">Status</label>
+            <select
+              value={approvedStatus}
+              onChange={(e) => setApprovedStatus(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="">All</option>
+              <option value="ready_to_publish">Ready to Publish</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {approvedLoading ? (
+        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading approved documents...</div>
+      ) : approvedDocs.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-gray-200 bg-white p-8 text-sm text-gray-500">
+          No approved documents yet. Final approved inspection packages will appear here after supervisor sign-off.
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Inspection</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Approved Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Investigator</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Supervisor</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {approvedDocs.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-700">{item.title}</td>
+                    <td className="px-4 py-3 text-gray-600">{item.approved_at ? format(new Date(item.approved_at), 'MMM d, yyyy') : '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{item.investigator_name || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{item.supervisor_name || '—'}</td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
+                        READY TO PUBLISH
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleApprovedView(item)}
+                          className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-navy-50 hover:text-navy-700"
+                          title="View"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleApprovedDownload(item)}
+                          className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                          title="Download"
+                        >
+                          <Download className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleReopen(item)}
+                          className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-amber-50 hover:text-amber-700"
+                          title="Reopen Next Year"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div>
         <h2 className="mb-3 text-lg font-semibold text-gray-900">Active Inspections</h2>

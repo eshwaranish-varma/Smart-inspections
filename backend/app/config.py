@@ -1,5 +1,20 @@
-from pydantic_settings import BaseSettings
 from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+def _env_files() -> tuple[str, ...]:
+    """Prefer repo root `.env`, then optional `backend/.env` overrides (same keys as root template)."""
+    paths: list[str] = []
+    root_env = _REPO_ROOT / ".env"
+    backend_env = _REPO_ROOT / "backend" / ".env"
+    if root_env.is_file():
+        paths.append(str(root_env))
+    if backend_env.is_file():
+        paths.append(str(backend_env))
+    return tuple(paths)
 
 
 class Settings(BaseSettings):
@@ -12,7 +27,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./smart_inspections.db"
     data_dir: str = "../data"
     title21_csv_path: str = ""
-    cors_origins: str = "http://localhost:5173,http://localhost:3000"
+    cors_origins: str = "http://localhost:3000,http://localhost:5173"
 
     @property
     def data_path(self) -> Path:
@@ -32,7 +47,12 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",")]
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = SettingsConfigDict(
+        env_file=_env_files() or None,
+        env_file_encoding="utf-8",
+        # Monorepo `.env` includes Docker/Next/Vite keys the API does not use.
+        extra="ignore",
+    )
 
 
 settings = Settings()

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ComponentType } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -17,6 +17,10 @@ import {
   X,
 } from 'lucide-react';
 import { getObservationStats, getHealth, getTopRegulations } from '@/lib/api';
+import {
+  dashboardPublishStatsQueryKey,
+  fetchDashboardPublishStats,
+} from '@/lib/dashboard-publish-stats';
 
 type SourceFilter = 'all' | 'IOM' | 'CFR';
 
@@ -123,29 +127,53 @@ export default function Dashboard() {
   const stats = useQuery({ queryKey: ['observation-stats'], queryFn: getObservationStats });
   const health = useQuery({ queryKey: ['health'], queryFn: getHealth });
   const topRegulations = useQuery({ queryKey: ['top-regulations'], queryFn: () => getTopRegulations(10) });
+  const publishStats = useQuery({
+    queryKey: dashboardPublishStatsQueryKey,
+    queryFn: fetchDashboardPublishStats,
+    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+  });
 
-  const statCards = [
-    {
-      label: 'Total CFR Citations',
-      value: stats.data?.total ?? 0,
-      icon: ClipboardList,
-    },
-    {
-      label: 'Published Documents',
-      value: '—',
-      icon: FileText,
-    },
-    {
-      label: 'Active Drafts',
-      value: '—',
-      icon: PenTool,
-    },
-    {
-      label: 'KB Status',
-      value: health.data?.kb_loaded ? 'Loaded' : 'Offline',
-      icon: Database,
-    },
-  ];
+  type StatCard = {
+    label: string;
+    value: string | number;
+    subtitle?: string;
+    icon: ComponentType<{ className?: string }>;
+  };
+
+  const statCards: StatCard[] = useMemo(
+    () => [
+      {
+        label: 'Total CFR Citations',
+        value: stats.data?.total ?? 0,
+        icon: ClipboardList,
+      },
+      {
+        label: 'Published Documents',
+        value: publishStats.isError ? '—' : (publishStats.data?.total ?? 0),
+        subtitle:
+          publishStats.data && !publishStats.isError
+            ? `${publishStats.data.readyToPublish} ready to publish · ${publishStats.data.published} published`
+            : undefined,
+        icon: FileText,
+      },
+      {
+        label: 'Active Drafts',
+        value: publishStats.isError ? '—' : (publishStats.data?.activeDrafts ?? 0),
+        subtitle:
+          publishStats.data && !publishStats.isError
+            ? 'Created, assigned, in progress, or in review'
+            : undefined,
+        icon: PenTool,
+      },
+      {
+        label: 'KB Status',
+        value: health.data?.kb_loaded ? 'Loaded' : 'Offline',
+        icon: Database,
+      },
+    ],
+    [stats.data?.total, health.data?.kb_loaded, publishStats.data, publishStats.isError]
+  );
 
   const quickLinks = [
     {
@@ -168,7 +196,7 @@ export default function Dashboard() {
     },
   ];
 
-  const isLoading = stats.isLoading || health.isLoading;
+  const isLoading = stats.isLoading || health.isLoading || publishStats.isLoading;
   const isError = stats.isError || health.isError;
 
   const filteredReferences = useMemo(() => {
@@ -208,7 +236,11 @@ export default function Dashboard() {
             Unable to reach the backend API. Please ensure the server is running.
           </p>
           <button
-            onClick={() => { stats.refetch(); health.refetch(); }}
+            onClick={() => {
+              stats.refetch();
+              health.refetch();
+              publishStats.refetch();
+            }}
             className="mt-3 text-sm font-medium text-red-600 underline hover:text-red-700 dark:text-red-300 dark:hover:text-red-200"
           >
             Retry
@@ -218,13 +250,16 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {isLoading
             ? Array.from({ length: 4 }).map((_, i) => <StatSkeleton key={i} />)
-            : statCards.map(({ label, value, icon: Icon }) => (
+            : statCards.map(({ label, value, subtitle, icon: Icon }) => (
                 <div key={label} className="card-polish p-6 dark:border-white/10 dark:bg-slate-900">
                   <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-navy-50 dark:bg-slate-800">
                     <Icon className="h-5 w-5 text-navy-600" />
                   </div>
                   <p className="text-3xl font-bold text-gray-900 dark:text-white">{value}</p>
                   <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{label}</p>
+                  {subtitle ? (
+                    <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">{subtitle}</p>
+                  ) : null}
                 </div>
               ))}
         </div>

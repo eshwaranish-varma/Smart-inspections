@@ -226,10 +226,10 @@ function LoginPageContent() {
               }}
             >
               <strong>
-                Demo Accounts (all use password: FDAInspector2026!)
+                Demo supervisors (all use password: FDAInspector2026!)
               </strong>
               <br />
-              james.mitchell@fda.hhs.gov | sandra.chen@fda.hhs.gov
+              james.mitchell@fda.hhs.gov · sandra.chen@fda.hhs.gov
             </div>
 
             <p

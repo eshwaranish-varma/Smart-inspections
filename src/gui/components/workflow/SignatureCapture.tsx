@@ -6,7 +6,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 interface SignatureCaptureProps {
   open: boolean;
   onClose: () => void;
-  onSign: (data: { signatureImage: string }) => void;
+  onSign: (data: {
+    signatureImage: string;
+    signatureText?: string;
+    signatureType: "draw" | "type";
+    signedName: string;
+    signedAt: string;
+  }) => void;
   investigatorName: string;
   title: string;
 }
@@ -23,6 +29,8 @@ export default function SignatureCapture({
   const [activeTab, setActiveTab] = useState<Tab>("draw");
   const [typedName, setTypedName] = useState(investigatorName);
   const modalRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawingRef = useRef(false);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -60,14 +68,92 @@ export default function SignatureCapture({
     }
   }, [open]);
 
+  const getCanvasContext = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    return { canvas, ctx };
+  };
+
+  const ensureCanvas = () => {
+    const bundle = getCanvasContext();
+    if (!bundle) return;
+    const { canvas, ctx } = bundle;
+    if (canvas.width === 0 || canvas.height === 0) {
+      canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+      canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#0f172a";
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+    }
+  };
+
+  useEffect(() => {
+    if (open && activeTab === "draw") {
+      setTimeout(ensureCanvas, 0);
+    }
+  }, [open, activeTab]);
+
   if (!open) return null;
+
+  const point = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  };
+
+  const startDraw = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const bundle = getCanvasContext();
+    if (!bundle) return;
+    ensureCanvas();
+    const { ctx } = bundle;
+    const { x, y } = point(event);
+    drawingRef.current = true;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const moveDraw = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!drawingRef.current) return;
+    const bundle = getCanvasContext();
+    if (!bundle) return;
+    const { ctx } = bundle;
+    const { x, y } = point(event);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const endDraw = () => {
+    drawingRef.current = false;
+  };
+
+  const clearCanvas = () => {
+    const bundle = getCanvasContext();
+    if (!bundle) return;
+    const { canvas, ctx } = bundle;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+  };
 
   const handleApply = () => {
     const signatureImage =
-      activeTab === "type"
-        ? typedName
-        : "data:image/png;base64,PLACEHOLDER_SIGNATURE";
-    onSign({ signatureImage });
+      activeTab === "draw"
+        ? canvasRef.current?.toDataURL("image/png") || ""
+        : "";
+    onSign({
+      signatureImage,
+      signatureText: activeTab === "type" ? typedName : undefined,
+      signatureType: activeTab,
+      signedName: typedName || investigatorName,
+      signedAt: new Date().toISOString(),
+    });
   };
 
   return (
@@ -114,11 +200,17 @@ export default function SignatureCapture({
         <div className="px-6 py-4">
           {activeTab === "draw" ? (
             <div className="space-y-3">
-              <div className="flex h-[150px] w-full items-center justify-center rounded-md border-2 border-dashed border-border bg-background text-sm text-text-muted">
-                Draw signature here
-              </div>
+              <canvas
+                ref={canvasRef}
+                className="h-[150px] w-full rounded-md border-2 border-dashed border-border bg-white"
+                onPointerDown={startDraw}
+                onPointerMove={moveDraw}
+                onPointerUp={endDraw}
+                onPointerLeave={endDraw}
+              />
               <button
                 type="button"
+                onClick={clearCanvas}
                 className="rounded px-3 py-1 text-xs font-medium text-text-secondary transition-colors hover:bg-background hover:text-text-primary"
               >
                 Clear

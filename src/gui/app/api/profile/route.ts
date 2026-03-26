@@ -13,6 +13,7 @@ type ProfileRow = {
   email: string;
   phone: string | null;
   fda_position: string | null;
+  role: string;
   address_line: string | null;
   city: string | null;
   state: string | null;
@@ -44,6 +45,7 @@ async function getUserByEmail(email: string): Promise<ProfileRow | null> {
         u.email,
         u.phone,
         u.fda_position,
+        u.role,
         p.address_line,
         p.city,
         p.state,
@@ -70,6 +72,7 @@ function buildProfilePayload(
     email: row?.email ?? tokenData.email ?? "",
     phone: row?.phone ?? "",
     fda_position: row?.fda_position ?? tokenData.fdaPosition ?? "",
+    role: row?.role ?? "investigator",
     address: row?.address_line ?? "",
     city: row?.city ?? "",
     state: row?.state ?? "",
@@ -186,6 +189,7 @@ export async function PUT(req: NextRequest) {
       last_name: lastName,
       email,
       fda_position: authUser.fda_position,
+      role: (currentUser.role as "supervisor" | "investigator") || "investigator",
     };
     setSessionCookie(response, createSessionToken(refreshedUser));
 

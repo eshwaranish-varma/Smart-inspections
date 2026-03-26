@@ -1,477 +1,368 @@
-# GMU DAEN Capstone Project - GitHub Repository Structure
+# Smart Inspections — AI-Assisted FDA 483 & EIR Drafting Platform
 
 ## Overview
 
-This repository provides a standardized directory structure for **George Mason University (GMU) College of Engineering and Computing (CEC) Data Analytics Engineering (DAEN) Program Capstone Projects**. This structure has been designed to accommodate the typical requirements of DAEN capstone projects, which are generally Python-based, include graphical user interfaces (GUIs), utilize Docker containerization, and require comprehensive testing and documentation.
+**Problem:** FDA inspection teams produce large volumes of structured documentation Form FDA 483 observations and Establishment Inspection Reports (EIRs). Doing this manually is slow, easy to make inconsistent, and hard to trace when multiple people touch the same case.
+
+**What this system does:** Smart Inspections combines **AI-assisted drafting**, **OCR**, **regulatory knowledge retrieval** (IOM / Title 21 context), and a **human-in-the-loop workflow** so investigators can generate drafts, edit them, route them to supervisors, and retain **versions, comments, signatures, and audit history**.
+
+**Who it is for:** FDA investigators and field staff, supervisors who review and approve work, and engineering teams operating or extending the platform. *(This is a capstone-style application; production FDA deployment would require additional validation and security review.)*
 
 ---
 
-## Important Notice
+## Key Features
 
-**This directory structure represents a commonly used and recommended organization for capstone projects. However, it is not mandatory.** Each project team has the full authority and flexibility to:
 
-- Modify this structure to better fit their project's specific needs
-- Add or remove folders as required
-- Reorganize the hierarchy
-- Choose not to use this structure at all
+| Area                       | Capability                                                                                                                                                                               |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Ingestion**              | Upload PDFs and images; **OCR** extracts text (Tesseract, OpenCV; PDFs via PyMuPDF).                                                                                                     |
+| **AI drafting**            | Generate and refine **483 observations** and **EIR** via **LangChain**; LLM is **Google Gemini** or **OpenAI** per `LLM_PROVIDER` in `backend` settings.                                 |
+| **Citations & references** | **Title 21** CSV-backed sections and **IOM**-grounded retrieval from the knowledge base.                                                                                                 |
+| **Knowledge base**         | PDFs under `data/` are ingested and chunked; retrieval uses **FAISS** with **OpenAI embeddings** when `OPENAI_API_KEY` is set, with keyword fallback if the vector index is unavailable. |
+| **Workflow (Next.js GUI)** | Inspection lifecycle: create → assign → draft → submit → **supervisor review** → approve / rework → close; **electronic signatures**, **comments**, **notifications**.                   |
+| **Traceability**           | **Workflow logs**, **document versions** (draft/submitted/rework/approved snapshots), **audit-oriented** views in the UI.                                                                |
+| **Document export**        | **FastAPI** generates **.docx** (Form 483, EIR) via `python-docx`; library endpoints persist drafts where configured.                                                                    |
+| **Auth (GUI)**             | Email signup with OTP, **JWT** sessions, bcrypt passwords, **PostgreSQL** for users and app data.                                                                                        |
+| **PDF in browser**         | Preview and rendering via **react-pdf** / **pdfjs-dist** in the GUI where applicable.                                                                                                    |
 
-The goal is to provide a solid starting point and best practices, while recognizing that every project is unique and may have different requirements.
 
 ---
 
-## Directory Structure
+## System Architecture
 
-```
-.
-├── .github/                    # GitHub-specific configurations
-│   ├── workflows/              # GitHub Actions CI/CD workflows
-│   ├── ISSUE_TEMPLATE/         # Templates for GitHub issues
-│   └── PULL_REQUEST_TEMPLATE/  # Templates for pull requests
-├── config/                     # Configuration files
-│   ├── development/            # Development environment configs
-│   ├── production/             # Production environment configs
-│   └── testing/                # Testing environment configs
-├── data/                       # Data files (excluded from git by default)
-│   ├── raw/                    # Original, immutable data
-│   ├── processed/              # Cleaned and transformed data
-│   ├── external/               # Data from external sources
-│   └── interim/                # Intermediate transformed data
-├── deployment/                 # Deployment configurations
-│   ├── kubernetes/             # Kubernetes manifests (if applicable)
-│   └── terraform/              # Infrastructure as Code (if applicable)
-├── docker/                     # Docker-related files
-│   ├── app/                    # Application container configs
-│   ├── database/               # Database container configs
-│   └── nginx/                  # Web server/reverse proxy configs
-├── docs/                       # Project documentation
-│   ├── user_guide/             # End-user documentation
-│   ├── technical/              # Technical documentation
-│   ├── api/                    # API documentation
-│   └── images/                 # Images, diagrams, and screenshots
-├── logs/                       # Application logs (excluded from git)
-├── notebooks/                  # Jupyter notebooks
-│   ├── exploratory/            # Exploratory data analysis (EDA)
-│   └── reports/                # Analysis reports and visualizations
-├── scripts/                    # Utility scripts
-│   ├── deployment/             # Deployment automation scripts
-│   ├── data_processing/        # Data ETL/processing scripts
-│   └── utilities/              # General utility scripts
-├── src/                        # Source code
-│   ├── api/                    # API endpoints and routes
-│   ├── gui/                    # GUI components and interfaces
-│   ├── models/                 # Data models and ML models
-│   ├── utils/                  # Utility functions and helpers
-│   └── database/               # Database connection and ORM models
-├── tests/                      # Test files
-│   ├── unit/                   # Unit tests
-│   ├── integration/            # Integration tests
-│   └── e2e/                    # End-to-end tests
-├── .gitignore                  # Git ignore file
-├── LICENSE                     # Project license
-├── README.md                   # This file
-├── requirements.txt            # Python dependencies
-├── setup.py                    # Package installation script (optional)
-└── docker-compose.yml          # Docker Compose configuration
+The repository ships **three runnable clients** and **one AI/API backend**:
+
+```text
+┌─────────────────────────┐     HTTP (browser)      ┌──────────────────────────────┐
+│   Next.js GUI :3000     │ ───────────────────────►│ Next.js Route Handlers       │
+│  (dashboard, workflow)  │                         │  /api/* → PostgreSQL (pg)    │
+└─────────────────────────┘                         └──────────────────────────────┘
+         │                                                    │
+         │  Same machine: Vite + FastAPI                      │
+         ▼                                                    ▼
+┌─────────────────────────┐     HTTP /api/*         ┌──────────────────────────────┐
+│  Vite React :5173       │ ───────────────────────►│  FastAPI :8000               │
+│  (inspection drafting)  │   VITE_API_URL          │  AI, OCR, documents, library │
+└─────────────────────────┘                         └──────────────────────────────┘
+                                                              │
+                                                              ▼
+                                                    ┌─────────────────┐
+                                                    │  PostgreSQL     │
+                                                    │  (workflow +    │
+                                                    │   library +     │
+                                                    │   saved docs)   │
+                                                    └─────────────────┘
 ```
 
----
+- **Next.js (`src/gui`)** — Landing, authentication, **eNSpect-style workflow** (`/workflow`, library, notifications). **Route handlers** `/api/`* read and write **PostgreSQL** (users, inspections, workflow, versions, document library). Flexible payloads live in **JSON** columns.
+- **Vite (`frontend`)** — Inspection drafting UI: observations, OCR, AI calls, document generation; calls **FastAPI** at `VITE_API_URL` (e.g. `http://localhost:8000/api`).
+- **FastAPI (`backend`)** — **REST** under `/api/...`: observations (incl. FY2025 Excel), AI, OCR, `.docx` generation, **saved document library** and **audit** via **SQLAlchemy** into **PostgreSQL** (`DATABASE_URL`).
 
-## Detailed Directory Descriptions
+**Persistence:** Configure `**DATABASE_URL`** for both the Next.js pool and the FastAPI engine so **all relational data** (workflow, users, saved documents, audit) lives in **one PostgreSQL database** (see Environment Variables).
 
-### `.github/`
-**Purpose:** Contains GitHub-specific configurations and automation.
+**AI layer (backend):**
 
-- **`workflows/`**: GitHub Actions YAML files for CI/CD pipelines, automated testing, deployment, and other workflow automation.
-- **`ISSUE_TEMPLATE/`**: Templates to standardize how team members and stakeholders create issues (e.g., bug reports, feature requests).
-- **`PULL_REQUEST_TEMPLATE/`**: Templates to ensure pull requests contain necessary information for code review.
-
-**Common Use Cases:**
-- Automated testing on push/pull requests
-- Automated deployment to staging/production
-- Code quality checks and linting
+- **OCR:** PyMuPDF (PDFs), Tesseract + OpenCV (images).
+- **LLM:** LangChain services; **Gemini** or **OpenAI** per `LLM_PROVIDER`.
+- **Retrieval:** Chunked PDF text; **FAISS** + OpenAI embeddings for vector search when `OPENAI_API_KEY` is available; otherwise keyword scoring over chunks.
 
 ---
 
-### `config/`
-**Purpose:** Stores configuration files for different environments.
+## Tech Stack
 
-- **`development/`**: Configuration files specific to local development environments (database connections, API keys for dev services, debug settings).
-- **`production/`**: Production-ready configurations (optimized settings, production database connections, error handling).
-- **`testing/`**: Configurations for testing environments (test databases, mock services, test API keys).
 
-**Common Use Cases:**
-- Database connection strings
-- API endpoints and keys
-- Feature flags
-- Logging levels
-- Application settings (e.g., JSON, YAML, TOML files)
+| Layer             | Technologies                                                                                                                      |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Next.js GUI**   | Next.js **16**, React **18**, TypeScript, Tailwind CSS, App Router, Route Handlers (`src/gui/app/api/`**), `pg` driver.           |
+| **Vite frontend** | Vite **5**, React **18**, TypeScript, Tailwind, TanStack Query, Axios.                                                            |
+| **Backend**       | Python **3.11**, **FastAPI**, Uvicorn, **SQLAlchemy 2**, Pydantic Settings, **psycopg2** (PostgreSQL).                            |
+| **Database**      | **PostgreSQL** — users, inspections, workflow, notifications, document library, FastAPI `saved_documents` / `audit_log`.          |
+| **AI**            | LangChain, **langchain-google-genai** / **langchain-openai**, **FAISS** + OpenAI embeddings (knowledge retrieval), tiktoken.      |
+| **OCR / PDF**     | PyMuPDF, Tesseract, OpenCV, Pillow.                                                                                               |
+| **Documents**     | python-docx, openpyxl.                                                                                                            |
+| **GUI UX**        | React Hook Form + **Zod**, **TanStack Table**, drag-and-drop (**@hello-pangea/dnd**), **Sonner** toasts, **Recharts** for charts. |
+| **Containers**    | Docker, Docker Compose (`docker-compose.yml`).                                                                                    |
 
-**Security Note:** Never commit sensitive credentials. Use environment variables or secret management tools.
-
----
-
-### `data/`
-**Purpose:** Stores all data files used by the project. This folder is typically excluded from version control via `.gitignore` due to file size and sensitivity.
-
-- **`raw/`**: Original, unmodified data exactly as received from the source. This data should be treated as immutable.
-- **`processed/`**: Data that has been cleaned, normalized, or transformed and is ready for analysis or model training.
-- **`external/`**: Data obtained from external sources or third-party APIs.
-- **`interim/`**: Intermediate data that has been partially processed but requires further transformation.
-
-**Best Practices:**
-- Document data sources and collection methods
-- Include data dictionaries or schemas
-- Consider using DVC (Data Version Control) for large datasets
-- Store large files in cloud storage (S3, Azure Blob, etc.) and reference them
 
 ---
 
-### `deployment/`
-**Purpose:** Contains infrastructure and deployment configurations.
+## Project Structure
 
-- **`kubernetes/`**: Kubernetes manifests for container orchestration (deployments, services, ingress, configmaps, secrets).
-- **`terraform/`**: Infrastructure as Code (IaC) files for provisioning cloud resources (AWS, Azure, GCP).
+```text
+backend/                 # FastAPI app — AI, OCR, documents, observations API
+  app/main.py            # Routers: /api/observations, /api/ai, /api/documents, /api/ocr, /api/library, …
+  app/services/          # AI, OCR, knowledge base, documents, citations
+  Dockerfile
 
-**Common Use Cases:**
-- Automated infrastructure provisioning
-- Scaling configurations
-- Load balancer setup
-- Cloud resource management
+frontend/                # Vite + React inspection UI (port 5173)
+  src/
 
----
+src/gui/                 # Next.js dashboard + workflow (port 3000)
+  app/                   # Pages + Route Handlers (/api/auth/*, /api/inspections/*, …)
+  lib/db/                # PostgreSQL access, inspection-service, schema.sql
+  components/
 
-### `docker/`
-**Purpose:** Contains all Docker-related configurations for containerizing the application.
+data/                    # IOM PDFs, templates, FY2025 Excel, rulebook JSONL (KB & API inputs)
+artifacts/               # Generated RAG JSONL (offline KB build pipeline)
 
-- **`app/`**: Dockerfiles and configs for the main application container.
-- **`database/`**: Dockerfiles and initialization scripts for database containers.
-- **`nginx/`**: Configuration files for NGINX web server or reverse proxy.
+docker-compose.yml       # PostgreSQL + FastAPI + Next.js + Vite + NGINX
+docker/nginx/smart.conf  # NGINX reverse proxy (single entry on host port NGINX_PORT)
 
-**Common Files:**
-- `Dockerfile`: Instructions for building Docker images
-- `.dockerignore`: Files to exclude from Docker context
-- Initialization scripts and startup commands
-
----
-
-### `docs/`
-**Purpose:** Comprehensive project documentation for various audiences.
-
-- **`user_guide/`**: Documentation for end-users on how to use the application (installation, features, tutorials).
-- **`technical/`**: Technical documentation for developers (architecture, design decisions, system diagrams).
-- **`api/`**: API documentation (endpoints, request/response formats, authentication).
-- **`images/`**: Supporting visual materials (screenshots, architecture diagrams, flowcharts, wireframes).
-
-**Recommended Tools:**
-- Markdown files for simple documentation
-- Sphinx or MkDocs for generating documentation websites
-- Swagger/OpenAPI for API documentation
-- Draw.io or Lucidchart for diagrams
-
----
-
-### `logs/`
-**Purpose:** Stores application logs generated during runtime.
-
-**Best Practices:**
-- Exclude from version control (add to `.gitignore`)
-- Implement log rotation to manage disk space
-- Use structured logging (JSON format)
-- Consider centralized logging solutions (ELK stack, CloudWatch, etc.)
-
----
-
-### `notebooks/`
-**Purpose:** Contains Jupyter notebooks for data analysis and experimentation.
-
-- **`exploratory/`**: Notebooks for exploratory data analysis (EDA), data visualization, and initial investigations.
-- **`reports/`**: Polished notebooks that serve as reports or presentations of findings.
-
-**Best Practices:**
-- Use clear naming conventions with dates or version numbers
-- Clean notebooks before committing (clear outputs if they contain sensitive data)
-- Consider using nbconvert to export to HTML/PDF for sharing
-
----
-
-### `scripts/`
-**Purpose:** Standalone scripts for various automation tasks.
-
-- **`deployment/`**: Scripts to automate deployment processes (build, test, deploy pipelines).
-- **`data_processing/`**: ETL (Extract, Transform, Load) scripts, data cleaning, and preprocessing scripts.
-- **`utilities/`**: General-purpose utility scripts (database backups, report generation, monitoring).
-
-**Common Scripts:**
-- Database migration scripts
-- Data seeding scripts
-- Backup and restore scripts
-- Environment setup scripts
-
----
-
-### `src/`
-**Purpose:** The main source code directory containing all application code.
-
-- **`api/`**: RESTful API endpoints, route definitions, request handlers (e.g., Flask routes, FastAPI endpoints).
-- **`gui/`**: Graphical user interface components (e.g., Tkinter, PyQt, Streamlit, or web frontend code).
-- **`models/`**:
-  - Data models (classes representing business entities)
-  - Machine learning models (trained models, model architectures)
-  - Database ORM models (SQLAlchemy, Django ORM)
-- **`utils/`**: Reusable utility functions and helper modules (data validation, formatters, converters).
-- **`database/`**: Database connection management, query builders, database initialization scripts.
-
-**Organization Tips:**
-- Follow Python package structure with `__init__.py` files
-- Keep modules focused and single-purpose
-- Use clear, descriptive naming conventions
-
----
-
-### `tests/`
-**Purpose:** All testing code to ensure application quality and reliability.
-
-- **`unit/`**: Unit tests that test individual functions or methods in isolation. Should be fast and numerous.
-- **`integration/`**: Integration tests that verify multiple components work together correctly (e.g., API + Database).
-- **`e2e/`**: End-to-end tests that simulate real user scenarios and test the entire application flow.
-
-**Testing Frameworks:**
-- `pytest`: Most popular Python testing framework
-- `unittest`: Built-in Python testing framework
-- `selenium`: For GUI and web application testing
-- `pytest-cov`: For code coverage reports
-
-**Best Practices:**
-- Aim for high test coverage (>80%)
-- Write tests before or alongside feature development (TDD)
-- Use fixtures and mocks to isolate tests
-- Run tests automatically in CI/CD pipeline
-
----
-
-## Root-Level Files
-
-### `.gitignore`
-Specifies files and directories that Git should ignore (e.g., `__pycache__/`, `*.pyc`, `data/`, `logs/`, `.env`, virtual environments).
-
-### `LICENSE`
-Specifies the legal license for the project (e.g., MIT, Apache 2.0, GPL). Consult with your advisor or university about appropriate licensing.
-
-### `README.md`
-This file. Provides an overview of the project, setup instructions, and directory structure documentation.
-
-### `requirements.txt`
-Lists all Python package dependencies with version numbers. Used with `pip install -r requirements.txt`.
-
-Alternative: `pyproject.toml` for modern Python projects using Poetry or similar tools.
-
-### `setup.py`
-Makes the project installable as a Python package. Useful for larger projects and for enabling `pip install -e .` for development.
-
-### `docker-compose.yml`
-Defines multi-container Docker applications, making it easy to spin up the entire application stack (app, database, cache, etc.) with a single command.
-
----
-
-## Step 1 – Rulebook Text Extraction
-
-The first stage of the regulatory AI pipeline extracts text from PDF regulatory manuals (FDA rulebooks, IOM, inspection manuals). It uses PyMuPDF for native text extraction and automatically falls back to OCR (Tesseract) for scanned pages.
-
-**Note:** OCR requires [Tesseract](https://github.com/tesseract-ocr/tesseract) to be installed on your system. On Ubuntu/Debian: `apt-get install tesseract-ocr`. On Windows: download from the [Tesseract project](https://github.com/UB-Mannheim/tesseract/wiki). If Tesseract is not on PATH, set `TESSERACT_CMD` env var or use `--tesseract-cmd` with the full path to `tesseract.exe`.
-
-### Example – JSON output
-
-```bash
-python -m src.utils.rulebook_text_extract \
-    --pdf data/iom.pdf \
-    --doc-id iom-2025 \
-    --out data/rulebooks/iom-2025.json
+tests/                   # Pytest layout
+scripts/                 # e.g. prepare_iom_rag_jsonl.py — offline KB / RAG JSONL generation
 ```
 
-### Example – JSONL output (one record per page)
+---
 
-```bash
-python -m src.utils.rulebook_text_extract \
-    --pdf data/iom.pdf \
-    --doc-id iom-2025 \
-    --out data/rulebooks/iom-2025.jsonl
-```
+## GUI (Next.js) — main routes
 
-### CLI options
 
-| Option | Description |
-|--------|-------------|
-| `--pdf` | Path to input PDF (required) |
-| `--doc-id` | Document identifier (required) |
-| `--out` | Output path (.json or .jsonl) (required) |
-| `--no-ocr` | Disable OCR fallback for scanned pages |
-| `--ocr-lang` | Tesseract language code (default: eng) |
-| `--ocr-dpi` | DPI for page rendering during OCR (default: 300) |
-| `--min-text-chars` | Min chars to treat page as non-scanned (default: 40) |
-| `--max-pages` | Maximum pages to process |
-| `--tesseract-cmd` | Path to tesseract.exe when not on PATH |
+| Area                      | Path (examples)                                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **Marketing / landing**   | `/`                                                                                                    |
+| **Auth**                  | `/login`, `/signup`, `/verify-email`                                                                   |
+| **Dashboard**             | `/dashboard`, `/merged-dashboard`                                                                      |
+| **Inspections**           | `/inspections`, `/inspections/new`, `/inspections/[id]`, `/new-inspection`                             |
+| **Workflow**              | `/workflow`, `/workflow/[id]`                                                                          |
+| **Documents**             | `/documents/483`, `/documents/483/[id]`, `/documents/eir`, `/documents/eir/[id]`, `/document/483/[id]` |
+| **Library & refs**        | `/library`, `/references`                                                                              |
+| **Observations & audit**  | `/observations`, `/audit-trail`, `/inspections/[id]/audit-trail`                                       |
+| **Settings**              | `/settings`                                                                                            |
+| **Alternate embedded UI** | `/smart-inspections` (self-contained JSX flow)                                                         |
+
+
+### Vite app (port 5173)
+
+React Router routes (see `frontend/src/App.tsx`): `/dashboard`, `/new-inspection`, `/observations`, `/library`, `/references`, `/audit-trail`, `/settings`, `/document/483/:id`.
 
 ---
 
-## Step 2 – Section-aware Chunking (RAG KB)
+## Database Overview (PostgreSQL)
 
-The second stage converts Step-1 pages JSONL into RAG-ready knowledge base (KB) JSONL. It detects CHAPTER and SUBCHAPTER headings, chunks content by paragraphs (~450 tokens with ~60 token overlap), and emits stable metadata for indexing and citation matching.
+All application state below is stored in **PostgreSQL** when `DATABASE_URL` points to the same database for the Next.js app and the FastAPI service.
 
-### Complete pipeline example
+**Workflow & auth (Next.js route handlers + `ensureAuthTables`):**
 
-```bash
-# Step 1: Extract text from PDF to pages JSONL
-python -m src.utils.rulebook_text_extract \
-  --pdf /mnt/data/InvestigationsOperationsManualComplete.pdf \
-  --doc-id iom-2025 \
-  --out data/rulebooks/iom-2025.pages.jsonl
 
-# Step 2: Chunk pages into RAG-ready KB JSONL
-python -m src.utils.rulebook_section_chunker \
-  --in data/rulebooks/iom-2025.pages.jsonl \
-  --out artifacts/iom-2025.kb.jsonl \
-  --doc-id iom-2025
-```
+| Table                            | Purpose                                                                                                  |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **users**                        | Accounts (investigator / supervisor), verification, password hashes.                                     |
+| **email_verifications**          | OTP / verification token rows tied to signup.                                                            |
+| **user_profiles**                | Address and **electronic signature** fields.                                                             |
+| **inspections**                  | One row per inspection; **status** drives workflow; JSON columns for observations, EIR, metadata, notes. |
+| **inspection_workflow_logs**     | Actions and status transitions.                                                                          |
+| **inspection_reviews**           | Supervisor approve / rework decisions.                                                                   |
+| **inspection_comments**          | Threaded comments.                                                                                       |
+| **inspection_document_versions** | Draft / submitted / rework / approved snapshots.                                                         |
+| **notifications**                | User notifications.                                                                                      |
+| **document_library_records**     | Published or archived library entries.                                                                   |
 
-The `kb.jsonl` output will be used later by indexing and citation matching in the regulatory AI pipeline.
 
-### Step 2 CLI options
+**Drafting API (FastAPI + SQLAlchemy `init_db`):**
 
-| Option | Description |
-|--------|-------------|
-| `--in` | Input pages JSONL path (required) |
-| `--out` | Output KB JSONL path (required) |
-| `--doc-id` | Document identifier (required) |
-| `--max-tokens` | Max tokens per chunk (default: 450) |
-| `--overlap-tokens` | Overlap between chunks (default: 60) |
-| `--min-chunk-chars` | Minimum chars to keep a chunk (default: 150) |
-| `--max-pages` | Max pages to process (for testing) |
+
+| Table               | Purpose                                         |
+| ------------------- | ----------------------------------------------- |
+| **saved_documents** | Saved Form 483–style drafts from the Vite path. |
+| **audit_log**       | Audit entries for backend actions.              |
+
+
+DDL reference: `**src/gui/lib/db/schema.sql`**. For existing databases created before workflow tables, apply `**src/gui/lib/db/migration-workflow.sql`** as documented in that file. Tables are also created at runtime via `**ensureAuthTables()**` in `user-service.ts` (and FastAPI `create_all` for its models when the app starts).
 
 ---
 
-## Getting Started
+## Workflow (End-to-End)
+
+Typical path combining **Vite + FastAPI** drafting with **Next.js** governance:
+
+1. **Sign in** (Next.js GUI) — JWT session after email verification where required.
+2. **Create inspection** — metadata and firm details stored in PostgreSQL.
+3. **Assign** — supervisor assigns to an investigator (role-gated APIs).
+4. **Investigator works** — may use **Vite app** to upload files, run **OCR**, call **AI** endpoints, edit observations/EIR JSON.
+5. **Draft milestones** — status moves through e.g. *in progress* → *draft completed* → *EIR submitted* (exact labels depend on implementation).
+6. **Submit for review** — transitions to *under review*; **notifications** may fire.
+7. **Supervisor review** — comments, **approve** or **rework**; **electronic signature** capture when required by the flow.
+8. **Approval** — approved snapshots and **document library** publishing logic run in service code.
+9. **Versions & audit** — **timeline** and **versions** APIs support history and exports.
+
+*Exact button labels and routes are in `src/gui/app/(dashboard)/workflow` and related API handlers.*
+
+---
+
+## Installation & Setup
 
 ### Prerequisites
-- Python 3.8+ (verify with your project requirements)
-- Docker and Docker Compose
-- Git
-- Virtual environment tool (venv, conda, or virtualenv)
 
-### Initial Setup
-
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd <repository-name>
-   ```
-
-2. **Create a virtual environment:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Set up environment variables:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-5. **Run with Docker (if applicable):**
-   ```bash
-   docker-compose up --build
-   ```
-
-6. **Run tests:**
-   ```bash
-   pytest tests/
-   ```
+- **Docker Desktop** (for Compose), or **Node 18+**, **Python 3.11+**, and a running **PostgreSQL** instance for manual setup.
+- **Tesseract OCR** on the host if you run the backend outside Docker (required for image OCR routes).
+- **LLM keys** for local runs: set `GOOGLE_API_KEY` and/or `OPENAI_API_KEY` in the **repository root** `.env` (copy from `.env.example`). Embeddings for the knowledge base use **OpenAI** when `OPENAI_API_KEY` is set.
 
 ---
 
-## Development Workflow
+### Option 1: Docker (recommended)
 
-1. **Create a new branch:**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
+Compose loads a **`.env`** file in the repository root (same directory as `docker-compose.yml`). Create **`.env`** and set secrets (`POSTGRES_PASSWORD`, `JWT_SECRET`, LLM keys, SMTP if you use email OTP).
 
-2. **Make changes and test locally:**
-   - Write code in the `src/` directory
-   - Add tests in the `tests/` directory
-   - Update documentation as needed
+From the **repository root**:
 
-3. **Run tests and linting:**
-   ```bash
-   pytest tests/
-   flake8 src/
-   black src/  # Code formatting
-   ```
+```bash
+mkdir -p data
+cp .env.example .env   # edit secrets
 
-4. **Commit and push:**
-   ```bash
-   git add .
-   git commit -m "Description of changes"
-   git push origin feature/your-feature-name
-   ```
+docker compose up --build
+```
 
-5. **Create a pull request:**
-   - Use the pull request template
-   - Request review from team members
-   - Address feedback and merge
+| Service      | Host port (default) | Description |
+| ------------ | ------------------- | ----------- |
+| **nginx**    | **80** (`NGINX_PORT`) | Single entry: Next.js UI + `/api/*` split between FastAPI and Next route handlers (see `docker/nginx/smart.conf`) |
+| **gui**      | **3000** (`GUI_PORT`) | Next.js (direct access; also behind NGINX) |
+| **frontend** | **5173** (`VITE_PORT`) | Vite static build (nginx) — inspection drafting UI |
+| **backend**  | **8000** (`BACKEND_PORT`) | FastAPI (`/docs` for Swagger) |
+| **db**       | **5432** (`POSTGRES_PORT`) | PostgreSQL (persistent volume `postgres_data`) |
 
----
+**How traffic is split (NGINX on port 80):** Paths matching `/api/(observations|ai|documents|ocr|library|citations|references|health)` go to **FastAPI**. All other **`/api/*`** requests go to **Next.js** route handlers. The **Vite** app does not use NGINX by default; it calls **FastAPI** using **`VITE_API_URL`** (baked at `docker compose build` time). Use **`http://localhost:8000/api`** when FastAPI is exposed on the host, or **`http://localhost/api`** if you point the browser at NGINX and want FastAPI under the same origin (set `VITE_API_URL` accordingly and rebuild).
 
-## Contributing
+**Environment:** `DATABASE_URL` must use the **`db`** hostname inside Compose (e.g. `postgresql://postgres:postgres@db:5432/smart_inspections`). **CORS** defaults include `http://localhost` for NGINX. **LLM keys** are passed into the backend from the root `.env` (`GOOGLE_API_KEY`, `OPENAI_API_KEY`).
 
-Please follow these guidelines:
-- Follow PEP 8 style guidelines for Python code
-- Write meaningful commit messages
-- Add tests for new features
-- Update documentation for significant changes
-- Review and test before submitting pull requests
+**Logs:** Services use the `json-file` driver with rotation (10 MB × 3 files). View with `docker compose logs -f <service>`.
+
+**Troubleshooting**
+
+- **`db` unhealthy:** Ensure `POSTGRES_USER` / `POSTGRES_DB` match `DATABASE_URL` credentials. If you change them, keep `DATABASE_URL` in sync.
+- **Backend stuck starting:** Check `docker compose logs backend`; DB must be healthy first. Knowledge base init warnings are non-fatal.
+- **Next.js build fails on Alpine:** If native modules fail, switch `src/gui/Dockerfile` base images to `node:18-bookworm-slim` (same pattern as the rest of the Dockerfile).
+- **AI/OCR in containers:** Set `GOOGLE_API_KEY` / `OPENAI_API_KEY` in `.env`. OCR needs Tesseract in the backend image.
+- **CORS errors in the browser:** Add your frontend origin to `CORS_ORIGINS` in `.env` (comma-separated).
+
+
 
 ---
 
-## Team Customization
+### Option 2: Manual (development)
 
-This structure is a **starting template**. Your team should:
-- Evaluate which folders are relevant to your specific project
-- Add additional folders as needed for your use case
-- Remove unused folders to keep the repository clean
-- Update this README to reflect your actual structure
-- Document any deviations from this standard structure
+Create **one** environment file at the **repository root** (same as Docker): copy **`.env.example`** to **`.env`** and set `DATABASE_URL` to use `localhost` for Postgres on your machine. FastAPI, Next.js, and Vite are wired to read that file.
 
----
+**Backend**
 
-## Support and Resources
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate   # or .venv\Scripts\activate on Windows
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
 
-- **GMU DAEN Program:** https://analyticsengineering.gmu.edu/
-- **Git Documentation:** https://git-scm.com/doc
-- **Docker Documentation:** https://docs.docker.com/
-- **Python Best Practices:** https://docs.python-guide.org/
+**Next.js GUI**
 
----
+```bash
+cd src/gui
+npm install
+npm run dev                     # uses Next 16 with --webpack (see package.json)
+```
 
-## License
+**Note:** Next.js **16** defaults to Turbopack; this project uses `**--webpack`** on `dev` and `build` because of a custom `webpack` alias in `next.config.js` (`react-router-dom` compat). Production: `npm run build` then `npm start` (listens on `0.0.0.0:3000`).
 
-[Specify your project license here]
-
----
-
-## Contact
-
-For questions about this structure or the DAEN Capstone program, contact:
-- Project Team: [Team Email/Contact]
-- Faculty Advisor: [Advisor Name and Email]
-- Program Coordinator: [Coordinator Contact]
+Interactive API docs: `**http://localhost:8000/docs`**.
 
 ---
 
-**Last Updated:** January 2026
+## Environment Variables
+
+Use the **repository root** **`.env.example`** as the template. Copy it to **`.env`** (gitignored) and fill in secrets. **Docker Compose** reads that `.env` automatically; local **FastAPI** loads `<repo>/.env` and optionally `<repo>/backend/.env` for overrides; **Next.js** (`src/gui`) loads the root `.env` via `next.config.js`; **Vite** reads `VITE_*` from the root `.env` via `envDir` in `vite.config.ts`.
+
+| Variable / group | Used by | Purpose |
+| ---------------- | ------- | ------- |
+| `POSTGRES_*`, `DATABASE_URL`, port vars | Compose, FastAPI, Next | Database and published ports. For Docker, set `DATABASE_URL` to use host **`db`**. For local Postgres, use **`localhost`**. |
+| `DATA_DIR`, `CORS_ORIGINS`, `TITLE21_CSV_PATH`, `LLM_PROVIDER`, model vars, `GOOGLE_API_KEY`, `OPENAI_API_KEY`, `OPENAI_TEMPERATURE` | FastAPI | API behavior, LLM keys, data paths |
+| `JWT_*`, `SMTP_*`, `EMAIL_FROM`, `NEXT_PUBLIC_APP_URL` | Next.js | Sessions, email OTP, public URL |
+| `VITE_API_URL` | Vite (build / dev) | Browser base URL for FastAPI (`VITE_*` only) |
+| `DB_HOST` … `DB_PASSWORD` | Next (legacy) | Optional split DB vars if a code path still expects them when `DATABASE_URL` is absent |
+
+
+---
+
+## API Overview
+
+### FastAPI (port 8000)
+
+
+| Path                | Role                                                      |
+| ------------------- | --------------------------------------------------------- |
+| `GET /`             | Service banner JSON                                       |
+| `/api/health`       | Health + knowledge-base loaded flag                       |
+| `/api/observations` | FY2025 observation dataset (Excel-backed), search, export |
+| `/api/ai`           | Generate/refine observations and EIR text                 |
+| `/api/documents`    | Generate Form 483 / EIR `.docx`                           |
+| `/api/ocr`          | OCR uploads                                               |
+| `/api/library`      | Saved documents (SQLAlchemy-backed library)               |
+| `/api/citations`    | Title 21–related citation help                            |
+| `/api/references`   | Reference material                                        |
+
+
+Full interactive docs: `**http://localhost:8000/docs`**.
+
+### Next.js Route Handlers (same origin as GUI, port 3000)
+
+
+| Group             | Endpoints                                                                                                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Auth**          | `POST /api/auth/login`, `logout`, `signup`, `verify`, `verify-otp`, `send-otp`                                                                                            |
+| **Profile**       | `GET/PUT /api/profile`, `GET/PUT /api/profile/signature`                                                                                                                  |
+| **Inspections**   | `GET/POST /api/inspections`, `GET /api/inspections/[id]`, `PUT /api/inspections/[id]/data`, `POST assign`, `transition`, `review`, `GET timeline`, `comments`, `versions` |
+| **Notifications** | `GET /api/notifications`, `POST /api/notifications/[id]/read`, `POST /api/notifications/read-all`                                                                         |
+| **Library**       | `GET/POST /api/document-library`, `POST /api/document-library/[id]/reopen`                                                                                                |
+| **Users**         | `GET /api/users/investigators` (assignee pickers)                                                                                                                         |
+
+
+---
+
+## Data & knowledge-base inputs
+
+Typical files under `**data/`**:
+
+
+| Asset                                                              | Role                                                               |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `InvestigationsOperationsManualComplete.pdf`                       | IOM — regulatory knowledge base text                               |
+| `inspection-observation-manual.pdf`, `Inspection-Observations.pdf` | 483 guidance / example text                                        |
+| `inspection_observations_fiscal_year_2025_0.xlsx`                  | FY2025 observations (FastAPI `/api/observations`)                  |
+| `FDA_483a_Word_Template.docx`                                      | Official 483 Word template                                         |
+| `title-21-sections.csv`                                            | Title 21 sections for citations (override with `TITLE21_CSV_PATH`) |
+| `rulebooks/*.jsonl` (under `data/`)                                | Rulebook page extracts for offline tooling                         |
+
+
+Offline RAG helpers live under `**scripts/`** (e.g. `**prepare_iom_rag_jsonl.py**`); generated indexes may be written to `**artifacts/**` when you run those pipelines.
+
+---
+
+## Screenshots
+
+Add screenshots under `docs/images/` (create folder if needed) and link them here for demos and presentations.
+
+---
+
+## Future Improvements
+
+- Stronger **production** hardening (secrets, HTTPS, rate limits, audit retention).
+- Deeper **EIR** automation and validation rules.
+- Tighter **citation** verification against current eCFR exports.
+- Expanded **RBAC** and org-wide policy.
+
+---
+
+## Related Documentation
+
+- `**src/gui/lib/db/schema.sql`** — Full PostgreSQL schema for workflow tables (and seed users).
+- `**src/gui/lib/db/migration-workflow.sql`** — Add workflow tables to older databases.
+
+---
+
+
+## Authors
+
+Capstone team — **Smart Inspection**
+
+---
+
+
 
