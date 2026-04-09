@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserFromRequest } from "@/lib/auth/get-current-user";
 import { getNotifications, getUnreadNotificationCount } from "@/lib/db/inspection-service";
+import { jsonServerError } from "@/lib/server/json-error";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ notifications, unreadCount });
   } catch (error) {
-    console.error("GET /api/notifications error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return jsonServerError("Internal server error", error);
   }
 }

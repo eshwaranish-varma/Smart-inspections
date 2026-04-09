@@ -78,10 +78,15 @@ export default function EIRDetailPage() {
         <Rocket className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
         <div>
           <h2 className="font-serif text-base font-semibold text-accent">
-            Phase 2 — Coming Soon
+            Preview only — live EIR uses workflow + API
           </h2>
           <p className="mt-1 text-sm text-accent/80">
-            The EIR builder and all data-collection forms below are disabled during Phase 2 development.
+            This screen is a layout preview. Generate EIR narrative content from an inspection in{' '}
+            <strong>Workflow</strong>; the backend uses IOM and EIR reference PDFs in{' '}
+            <code className="rounded bg-background/80 px-1 text-[11px]">data/</code> (
+            <strong>InvestigationsOperationsManualComplete.pdf</strong>,{' '}
+            <strong>Establishment_Inspection_Report_(EIR).pdf</strong>) plus CFR citations. Forms below stay disabled
+            here.
           </p>
         </div>
       </div>
@@ -128,7 +133,7 @@ export default function EIRDetailPage() {
             <div className="relative mt-6">
               <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded bg-background/60">
                 <span className="rounded border border-accent/30 bg-accent/10 px-4 py-2 font-mono text-xs font-semibold text-accent">
-                  Coming Soon
+                  Use Workflow for live EIR
                 </span>
               </div>
 

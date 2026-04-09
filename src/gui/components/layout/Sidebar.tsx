@@ -5,10 +5,11 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   BookOpen,
+  ClipboardCheck,
   FileText,
   FolderOpen,
   Home,
-  PlusSquare,
+  LineChart,
   Settings,
   Shield,
 } from "lucide-react";
@@ -18,8 +19,9 @@ import UserMenu from "@/components/layout/UserMenu";
 
 const navItems = [
   { href: "/dashboard", label: "Home", icon: Home },
-  { href: "/new-inspection", label: "New Inspection", icon: PlusSquare },
-  { href: "/observations", label: "CFR", icon: BookOpen },
+  { href: "/workflow", label: "Workflow", icon: ClipboardCheck },
+  { href: "/observations", label: "Title 21 CFR", icon: BookOpen },
+  { href: "/evaluation", label: "Evaluation", icon: LineChart },
   { href: "/library", label: "Library", icon: FolderOpen },
   { href: "/references", label: "References", icon: FileText },
   { href: "/audit-trail", label: "Audit", icon: Activity },

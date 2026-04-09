@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserFromRequest } from "@/lib/auth/get-current-user";
 import {
   getInspectionById,
+  insertAiRun,
+  insertAuditLog,
   isFda483Pipeline,
   isFdaSequencedWorkflow,
   updateInspectionData,
@@ -14,6 +16,9 @@ import {
 
 const ALLOWED: Set<string> = new Set(["eir_assigned", "eir_drafting", "rework_required"]);
 
+/** FDA 483→EIR: block EIR AI generation until the 483 has cleared supervisor approval (not in pre-approval phases). */
+const PRE_483_APPROVAL_STATUSES = new Set(["created", "assigned", "in_progress", "draft_completed"]);
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -25,6 +30,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const inspection = await getInspectionById(id);
     if (!inspection) return NextResponse.json({ error: "Inspection not found" }, { status: 404 });
+
+    if (isFdaSequencedWorkflow(inspection.metadata_json) && PRE_483_APPROVAL_STATUSES.has(inspection.status)) {
+      return NextResponse.json(
+        {
+          error:
+            "EIR can only be generated after FDA Form 483 approval. Complete supervisor review and advance the workflow until the EIR drafting phase.",
+        },
+        { status: 400 }
+      );
+    }
 
     if (!ALLOWED.has(inspection.status)) {
       return NextResponse.json(
@@ -78,6 +93,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       version_type: "DRAFT",
       version_comments: "EIR narrative generated (post–483 pipeline)",
       performed_by: user.id,
+    });
+
+    await insertAiRun({
+      inspectionId: id,
+      userId: user.id,
+      runType: "eir_pipeline",
+      model: "generate-eir-pipeline",
+      outputSummary: {
+        eir_sections: Object.keys(eirPayload as object).filter((k) => typeof (eirPayload as Record<string, unknown>)[k] === "string"),
+      },
+    });
+    await insertAuditLog({
+      inspectionId: id,
+      userId: user.id,
+      action: "EIR_PIPELINE_GENERATED",
+      entityType: "eir",
+      changes: { version_snapshot: true },
     });
 
     return NextResponse.json({ inspection: updated, eir: eirPayload });

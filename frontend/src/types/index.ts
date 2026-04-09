@@ -37,6 +37,11 @@ export interface GenerateObservationsResponse {
     section_label: string;
     score: number;
   }[];
+  segmented_count?: number | null;
+  drafted_count?: number | null;
+  mapping_valid?: boolean | null;
+  segmentation_valid?: boolean | null;
+  segmentation_warning?: boolean | null;
 }
 
 export interface EIRNarrative {

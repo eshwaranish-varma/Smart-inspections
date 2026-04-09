@@ -73,13 +73,13 @@ export default function SignupPage() {
   }
 
   const positions = [
-    "Senior Investigator — Office of Regulatory Affairs",
-    "Compliance Officer — Center for Drug Evaluation and Research",
-    "Division Director — Office of Pharmaceutical Quality Operations",
-    "Investigator — Center for Biologics Evaluation and Research",
-    "Program Manager — Office of Criminal Investigations",
-    "Inspector — Center for Food Safety and Applied Nutrition",
-    "Analyst — Center for Devices and Radiological Health",
+    "Senior Investigator - Office of Regulatory Affairs",
+    "Compliance Officer - Center for Drug Evaluation and Research",
+    "Division Director - Office of Pharmaceutical Quality Operations",
+    "Investigator - Center for Biologics Evaluation and Research",
+    "Program Manager - Office of Criminal Investigations",
+    "Inspector - Center for Food Safety and Applied Nutrition",
+    "Analyst - Center for Devices and Radiological Health",
     "Other FDA Position",
   ];
 
@@ -254,7 +254,7 @@ export default function SignupPage() {
                   onChange={handleChange}
                   style={{ ...inputStyle, background: "#fff" }}
                 >
-                  <option value="">— Select your position —</option>
+                  <option value="">- Select your position -</option>
                   {positions.map((p) => (
                     <option key={p} value={p}>
                       {p}
@@ -274,6 +274,9 @@ export default function SignupPage() {
                   <option value="investigator">Field Client Investigator</option>
                   <option value="supervisor">Supervisory Investigator</option>
                 </select>
+                <p style={{ fontSize: 12, color: "#64748b", marginTop: 8, marginBottom: 0 }}>
+                  Both roles can access Title 21 CFR reference data and AI evaluation metrics for their inspection assignments.
+                </p>
               </div>
 
               <div style={{ marginBottom: 16 }}>

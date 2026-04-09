@@ -3,12 +3,16 @@
 import { format } from 'date-fns';
 import { Clock } from 'lucide-react';
 
-interface AuditEntry {
+export interface AuditEntry {
   id: string;
   timestamp: string;
   action: string;
   user: string;
   details?: string;
+  investigator?: string;
+  supervisor?: string;
+  statusBadge?: string;
+  actions?: { key: string; label: string; onClick: () => void | Promise<void> }[];
 }
 
 interface AuditTrailTimelineProps {
@@ -20,13 +24,16 @@ const ACTION_COLORS: Record<string, { dot: string; bg: string; text: string }> =
   edited:    { dot: 'bg-blue-500',    bg: 'bg-blue-50',    text: 'text-blue-700' },
   generated: { dot: 'bg-purple-500',  bg: 'bg-purple-50',  text: 'text-purple-700' },
   published: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-700' },
+  ready:     { dot: 'bg-amber-500',   bg: 'bg-amber-50',   text: 'text-amber-800' },
   deleted:   { dot: 'bg-red-500',     bg: 'bg-red-50',     text: 'text-red-700' },
 };
 
 const DEFAULT_COLOR = { dot: 'bg-gray-400', bg: 'bg-gray-50', text: 'text-gray-600' };
 
 function getColor(action: string) {
-  const key = Object.keys(ACTION_COLORS).find((k) => action.toLowerCase().includes(k));
+  const low = action.toLowerCase();
+  if (low.includes('ready') && low.includes('publish')) return ACTION_COLORS.ready;
+  const key = Object.keys(ACTION_COLORS).find((k) => low.includes(k));
   return key ? ACTION_COLORS[key] : DEFAULT_COLOR;
 }
 
@@ -67,11 +74,46 @@ export default function AuditTrailTimeline({ entries }: AuditTrailTimelineProps)
                   {format(ts, 'MMM d, yyyy h:mm a')}
                 </span>
               </div>
-              <p className="mt-1 text-sm text-gray-700">
-                <span className="font-medium">{entry.user}</span>
-              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">{entry.user}</span>
+                </p>
+                {entry.statusBadge && (
+                  <span className="rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600">
+                    {entry.statusBadge}
+                  </span>
+                )}
+              </div>
               {entry.details && (
                 <p className="mt-0.5 text-sm text-gray-500">{entry.details}</p>
+              )}
+              {(entry.investigator || entry.supervisor) && (
+                <div className="mt-2 grid gap-0.5 text-xs text-gray-600 sm:grid-cols-2">
+                  {entry.investigator && (
+                    <p>
+                      <span className="font-medium text-gray-700">Investigator:</span> {entry.investigator}
+                    </p>
+                  )}
+                  {entry.supervisor && (
+                    <p>
+                      <span className="font-medium text-gray-700">Supervisor:</span> {entry.supervisor}
+                    </p>
+                  )}
+                </div>
+              )}
+              {entry.actions && entry.actions.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {entry.actions.map((a) => (
+                    <button
+                      key={a.key}
+                      type="button"
+                      onClick={() => void a.onClick()}
+                      className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-navy-800 shadow-sm transition hover:bg-navy-50 hover:border-navy-200"
+                    >
+                      {a.label}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -81,6 +123,5 @@ export default function AuditTrailTimeline({ entries }: AuditTrailTimelineProps)
   );
 }
 
-export type { AuditEntry };
 
 

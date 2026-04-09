@@ -96,6 +96,7 @@ export default function WorkflowPage() {
   const [showAssignModal, setShowAssignModal] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [newInspection, setNewInspection] = useState({
     title: '', firmName: '', feiNumber: '', establishmentType: '', districtOffice: '',
@@ -105,6 +106,7 @@ export default function WorkflowPage() {
   const isSupervisor = profile?.role === 'supervisor';
 
   const loadData = useCallback(async () => {
+    setLoadError(null);
     try {
       const [profileRes, inspRes] = await Promise.all([
         fetch('/api/profile', { credentials: 'include' }),
@@ -113,10 +115,17 @@ export default function WorkflowPage() {
       if (profileRes.ok) {
         const pData = await profileRes.json();
         setProfile(pData.profile);
+      } else if (profileRes.status === 401) {
+        setLoadError('Session expired. Please sign in again.');
       }
       if (inspRes.ok) {
         const iData = await inspRes.json();
         setInspections(iData.inspections || []);
+      } else if (inspRes.status === 401) {
+        setLoadError('Session expired. Please sign in again.');
+      } else {
+        const err = await inspRes.json().catch(() => ({}));
+        setLoadError(typeof err.error === 'string' ? err.error : 'Could not load inspections.');
       }
       const invRes = await fetch('/api/users/investigators', { credentials: 'include' });
       if (invRes.ok) {
@@ -125,6 +134,7 @@ export default function WorkflowPage() {
       }
     } catch (err) {
       console.error('Failed to load workflow data:', err);
+      setLoadError('Network error loading workflow.');
     } finally {
       setLoading(false);
     }
@@ -184,6 +194,21 @@ export default function WorkflowPage() {
     return (
       <div className="flex h-96 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-navy-600" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+        <p className="text-sm font-medium text-red-800">{loadError}</p>
+        <button
+          type="button"
+          onClick={() => { setLoading(true); void loadData(); }}
+          className="mt-3 text-sm font-semibold text-red-700 underline hover:text-red-900"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -264,7 +289,11 @@ export default function WorkflowPage() {
         <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 py-16">
           <AlertTriangle className="mb-3 h-10 w-10 text-gray-300" />
           <p className="text-sm font-medium text-gray-500">
-            {inspections.length === 0 ? 'No inspections yet' : 'No inspections match your filters'}
+            {inspections.length === 0
+              ? isSupervisor
+                ? 'No inspections yet — create an assignment to get started.'
+                : 'No assignments yet. When a supervisor assigns an inspection to you, it will appear here.'
+              : 'No inspections match your filters'}
           </p>
         </div>
       ) : (

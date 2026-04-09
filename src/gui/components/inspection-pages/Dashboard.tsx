@@ -177,9 +177,9 @@ export default function Dashboard() {
 
   const quickLinks = [
     {
-      to: '/new-inspection',
-      title: 'New Inspection',
-      description: 'Draft FDA 483 observations from your inspection notes using AI.',
+      to: '/workflow',
+      title: 'eNSpect Workflow',
+      description: 'Create assignments and open drafting from your inspection workflow.',
       icon: FilePlus,
     },
     {
@@ -222,11 +222,11 @@ export default function Dashboard() {
           </p>
         </div>
         <Link
-          to="/new-inspection"
+          to="/workflow"
           className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0B1F3A] via-[#123d72] to-[#2F7A7A] px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
         >
           <FilePlus className="h-4 w-4" />
-          Start New Inspection Draft
+          Open workflow
         </Link>
       </div>
 

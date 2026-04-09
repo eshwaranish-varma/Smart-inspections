@@ -1,9 +1,15 @@
 # Smart Inspections — production-oriented stack
 # Load variables from a `.env` file in this directory (Compose reads it automatically).
-# Copy .env.example to .env and set secrets before deploying.
+# Copy .env.example to `.env` and set DATABASE_URL (Supabase), JWT_SECRET, LLM keys.
+#
+# Default: Supabase or any external Postgres — set DATABASE_URL in `.env` (no local `db` container).
+# Optional local DB: docker compose --profile local-db up --build
+#   and DATABASE_URL=postgresql://postgres:postgres@db:5432/smart_inspections
 
 services:
   db:
+    profiles:
+      - local-db
     image: postgres:15-alpine
     container_name: smart-db
     environment:
@@ -35,19 +41,20 @@ services:
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/smart_inspections}
+      # Set in `.env` — Supabase URI with ?sslmode=require, or postgresql://postgres:postgres@db:5432/smart_inspections with --profile local-db
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost,http://127.0.0.1}
       DATA_DIR: /app/data
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_ROUTER_API_KEY: ${OPENAI_ROUTER_API_KEY:-}
+      OPENAI_ROUTER_MODEL: ${OPENAI_ROUTER_MODEL:-}
+      OPENAI_COMPAT_BASE_URL: ${OPENAI_COMPAT_BASE_URL:-}
       LLM_PROVIDER: ${LLM_PROVIDER:-google}
       GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.0-flash}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o}
     volumes:
       - ./data:/app/data
-    depends_on:
-      db:
-        condition: service_healthy
     restart: unless-stopped
     logging: *default-logging
 
@@ -59,19 +66,19 @@ services:
     ports:
       - "${GUI_PORT:-3000}:3000"
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/smart_inspections}
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
       NODE_ENV: production
       JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      # Server-side Route Handlers must reach FastAPI by Docker DNS name (not localhost).
+      BACKEND_API_URL: ${BACKEND_API_URL:-http://backend:8000}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
     depends_on:
-      db:
-        condition: service_healthy
       backend:
         condition: service_healthy
     restart: unless-stopped

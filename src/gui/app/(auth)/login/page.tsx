@@ -226,10 +226,15 @@ function LoginPageContent() {
               }}
             >
               <strong>
-                Demo supervisors (all use password: FDAInspector2026!)
+                Demo supervisors (password: FDAInspector2026!)
               </strong>
               <br />
               james.mitchell@fda.hhs.gov · sandra.chen@fda.hhs.gov
+              <br />
+              <span style={{ color: "#64748b" }}>
+                Investigators: sign in with a Field Client Investigator account (e.g. from signup) — same CFR and evaluation
+                features.
+              </span>
             </div>
 
             <p

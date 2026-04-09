@@ -29,6 +29,16 @@ openpyxl>=3.1.0
 # CORS
 starlette>=0.36.0
 
+# Evaluation (WER for optional ground-truth scoring)
+jiwer>=3.0.0
+
+# Fuzzy matching (evidence post-process)
+rapidfuzz>=3.6.0
+
+# Local embeddings (CFR semantic index + semantic grounding)
+sentence-transformers>=2.6.0
+numpy>=1.26.0
+
 # Utilities
 aiofiles>=23.2.0
 python-multipart>=0.0.9

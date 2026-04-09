@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { setSessionCookie } from "@/lib/auth/session";
 import { validateLoginCredentials } from "@/lib/auth/auth-service";
+import { isDatabaseUnavailableError } from "@/lib/db/user-service";
+import { jsonServerError } from "@/lib/server/json-error";
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,10 +51,13 @@ export async function POST(req: NextRequest) {
     return response;
   } catch (error) {
     console.error("Login error:", error);
-    return NextResponse.json(
-      { error: "Internal server error." },
-      { status: 500 }
-    );
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json(
+        { error: (error as Error).message },
+        { status: 503 }
+      );
+    }
+    return jsonServerError("Internal server error.", error);
   }
 }
 

@@ -1,7 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, Mail, MapPin, Phone, Shield, User as UserIcon, X } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  Briefcase,
+  CalendarDays,
+  Mail,
+  MapPin,
+  Shield,
+  User as UserIcon,
+  X,
+} from "lucide-react";
 
 export type ProfileModalProfile = {
   id?: string;
@@ -9,6 +18,8 @@ export type ProfileModalProfile = {
   last_name: string;
   email: string;
   phone?: string;
+  /** App permission: supervisor | investigator (read-only). */
+  role?: string;
   fda_position?: string;
   address?: string;
   city?: string;
@@ -24,6 +35,8 @@ type EditableProfileForm = {
   last_name: string;
   email: string;
   phone: string;
+  /** FDA title / position (editable; distinct from account role). */
+  fda_position: string;
   address: string;
   city: string;
   state: string;
@@ -42,6 +55,7 @@ const EMPTY_FORM: EditableProfileForm = {
   last_name: "",
   email: "",
   phone: "",
+  fda_position: "",
   address: "",
   city: "",
   state: "",
@@ -61,6 +75,7 @@ function toFormData(profile: ProfileModalProfile): EditableProfileForm {
     last_name: profile.last_name ?? "",
     email: profile.email ?? "",
     phone: profile.phone ?? "",
+    fda_position: profile.fda_position ?? "",
     address: profile.address ?? "",
     city: profile.city ?? "",
     state: profile.state ?? "",
@@ -80,12 +95,20 @@ function formatCreatedDate(value?: string) {
   });
 }
 
+function formatAccountRole(role?: string) {
+  const r = (role || "").trim().toLowerCase();
+  if (r === "supervisor") return "Supervisor";
+  if (r === "investigator") return "Investigator";
+  return role?.trim() || "—";
+}
+
 export default function ProfileModal({
   open,
   onClose,
   onProfileUpdated,
 }: ProfileModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [portalEl, setPortalEl] = useState<HTMLElement | null>(null);
   const [profile, setProfile] = useState<ProfileModalProfile | null>(null);
   const [formData, setFormData] = useState<EditableProfileForm>(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
@@ -176,6 +199,18 @@ export default function ProfileModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown, open]);
 
+  useLayoutEffect(() => {
+    setPortalEl(document.body);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
   useEffect(() => {
     if (open) {
       modalRef.current?.querySelector<HTMLElement>("button")?.focus();
@@ -227,7 +262,8 @@ export default function ProfileModal({
 
       const updatedProfile: ProfileModalProfile = {
         ...data.profile,
-        fda_position: profile?.fda_position ?? "",
+        role: profile?.role ?? data.profile?.role,
+        fda_position: data.profile?.fda_position ?? formData.fda_position,
         organization: profile?.organization ?? "FDA",
         created_at: profile?.created_at,
       };
@@ -248,9 +284,9 @@ export default function ProfileModal({
 
   if (!open) return null;
 
-  return (
+  const modal = (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -260,7 +296,7 @@ export default function ProfileModal({
     >
       <div
         ref={modalRef}
-        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+        className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
       >
         <div className="flex items-start justify-between border-b border-slate-200 bg-gradient-to-r from-navy-800 to-navy-700 px-6 py-5">
           <div className="flex items-center gap-4">
@@ -318,7 +354,17 @@ export default function ProfileModal({
                   <div className="rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-100">
                     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                       <Shield className="h-4 w-4" />
-                      Role
+                      Account role
+                    </div>
+                    <p className="mt-2 text-sm font-medium text-slate-900">
+                      {formatAccountRole(profile?.role)}
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-500">Set by your administrator — cannot be changed here.</p>
+                  </div>
+                  <div className="rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-100">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <Briefcase className="h-4 w-4" />
+                      FDA title / position
                     </div>
                     <p className="mt-2 text-sm font-medium text-slate-900">
                       {profile?.fda_position || "Not available"}
@@ -413,12 +459,25 @@ export default function ProfileModal({
                   </div>
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Role
+                      Account role
                     </label>
                     <input
-                      value={profile?.fda_position || ""}
+                      value={formatAccountRole(profile?.role)}
+                      readOnly
                       disabled
                       className={READ_ONLY_INPUT_CLASS}
+                      title="Cannot be changed in the app"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      FDA title
+                    </label>
+                    <input
+                      value={formData.fda_position}
+                      onChange={handleFieldChange("fda_position")}
+                      disabled={!isEditing}
+                      className={EDITABLE_INPUT_CLASS}
                     />
                   </div>
                   <div>
@@ -523,9 +582,8 @@ export default function ProfileModal({
                 <div className="flex items-start gap-2">
                   <MapPin className="mt-0.5 h-4 w-4 text-cyan-700" />
                   <p>
-                    Role, organization, and account created date are displayed using the
-                    current profile data available from the existing API. Editable fields are
-                    saved through the current `/api/profile` endpoint.
+                    <strong>Account role</strong> (Investigator / Supervisor) cannot be changed here. Other fields
+                    save through <code className="rounded bg-white/80 px-1 text-xs">PUT /api/profile</code>.
                   </p>
                 </div>
               </section>
@@ -535,4 +593,6 @@ export default function ProfileModal({
       </div>
     </div>
   );
+
+  return portalEl ? createPortal(modal, portalEl) : null;
 }

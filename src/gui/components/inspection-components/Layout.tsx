@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
-  FilePlus,
   BarChart3,
   FolderOpen,
   Settings,
@@ -15,6 +14,7 @@ import {
   LogOut,
   Menu,
   ClipboardCheck,
+  LineChart,
 } from 'lucide-react';
 import ProfileMenu from "@/components/profile/ProfileMenu";
 import NotificationBell from "@/components/layout/NotificationBell";
@@ -22,8 +22,8 @@ import NotificationBell from "@/components/layout/NotificationBell";
 const navItems = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { to: '/workflow', label: 'eNSpect Workflow', icon: ClipboardCheck },
-  { to: '/new-inspection', label: 'New Inspection', icon: FilePlus },
-  { to: '/observations', label: 'CFR Citations', icon: BarChart3 },
+  { to: '/observations', label: 'Title 21 CFR', icon: BarChart3 },
+  { to: '/evaluation', label: 'AI Evaluation', icon: LineChart },
   { to: '/library', label: 'Document Library', icon: FolderOpen },
   { to: '/references', label: 'References', icon: BookOpen },
   { to: '/audit-trail', label: 'Audit Trail', icon: History },
@@ -71,16 +71,25 @@ export default function Layout() {
           return;
         }
 
-        const data = await response.json();
+        const data = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          profile?: DashboardProfile;
+        };
         if (!response.ok) {
-          throw new Error(data.error || "Failed to load profile.");
+          console.warn(
+            "Profile load failed:",
+            response.status,
+            data.error || response.statusText
+          );
+          if (active) setProfile(null);
+          return;
         }
 
         if (active) {
           setProfile(data.profile);
         }
       } catch (error) {
-        console.error("Failed to load dashboard profile:", error);
+        console.warn("Failed to load dashboard profile:", error);
       } finally {
         if (active) {
           setLoadingProfile(false);

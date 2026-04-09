@@ -65,8 +65,50 @@ export default function EIRPreview({
   const refs =
     pickEirText(eir, 'references_and_citations', 'referencesAndCitations') || fallbackRefs(observations) || '';
 
+  const cov = eir as Record<string, unknown>;
+  const coveragePct =
+    typeof cov.coverage === 'number' ? Math.round(Number(cov.coverage) * 100) : null;
+  const totalObs =
+    typeof cov.eir_total_observations === 'number'
+      ? Number(cov.eir_total_observations)
+      : observations.length;
+  const includedObs =
+    typeof cov.eir_observations_included === 'number'
+      ? Number(cov.eir_observations_included)
+      : totalObs;
+  const coverageOk = cov.observation_coverage_valid === true;
+  const recovered = cov.eir_coverage_recovered === true;
+  const llmMissing = Array.isArray(cov.eir_llm_missing_observation_ids)
+    ? (cov.eir_llm_missing_observation_ids as string[])
+    : [];
+
   return (
     <div className="mx-auto space-y-6">
+      {coveragePct !== null ? (
+        <div
+          className={`mx-auto w-[8.5in] rounded-lg border px-4 py-3 text-sm ${
+            coverageOk && !recovered
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+              : 'border-red-300 bg-red-50 text-red-900'
+          }`}
+        >
+          <p className="font-semibold">483 → EIR observation coverage</p>
+          <p className="mt-1">
+            Total observations (483): {totalObs} · Included in EIR: {includedObs} · Coverage: {coveragePct}%
+          </p>
+          {recovered ? (
+            <p className="mt-2 text-xs">
+              Recovery applied: the model did not emit full traceability; missing rows were synthesized from the 483
+              text. IDs: {llmMissing.length ? llmMissing.join(', ') : '—'}
+            </p>
+          ) : null}
+          {!coverageOk ? (
+            <p className="mt-2 text-xs font-medium">
+              Review before approval: coverage was not fully produced by the model without recovery.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       <div className="mx-auto w-[8.5in] min-h-[11in] bg-white px-[0.7in] py-[0.8in] shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
         <h1 className="text-center text-xl font-semibold text-gray-900">ESTABLISHMENT INSPECTION REPORT</h1>
         <div className="mt-6 space-y-2 text-sm text-gray-700">

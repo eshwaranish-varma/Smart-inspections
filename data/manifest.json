@@ -1,0 +1,9 @@
+{
+  "input": "C:\\Users\\eshwa\\Desktop\\DEAN Final Project\\FDA Project\\Crawl4i\\title-21-paragraphs-detailed.csv",
+  "paragraph_records": 65035,
+  "section_chunk_records": 18657,
+  "files": {
+    "paragraphs_jsonl": "C:\\Users\\eshwa\\Desktop\\DEAN Final Project\\FDA Project\\Crawl4i\\rag_output\\title21_rag_paragraphs.jsonl",
+    "section_chunks_jsonl": "C:\\Users\\eshwa\\Desktop\\DEAN Final Project\\FDA Project\\Crawl4i\\rag_output\\title21_rag_section_chunks.jsonl"
+  }
+}

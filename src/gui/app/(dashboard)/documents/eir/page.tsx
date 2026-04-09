@@ -70,12 +70,16 @@ export default function EIRListPage() {
         <Rocket className="mt-0.5 h-6 w-6 shrink-0 text-accent" />
         <div>
           <h2 className="font-serif text-lg font-semibold text-accent">
-            Phase 2 — Coming Soon
+            EIR generation and regulatory sources
           </h2>
           <p className="mt-1 text-sm text-accent/80">
-            The EIR builder is under active development. This module will enable
-            investigators to generate comprehensive Establishment Inspection Reports
-            directly from inspection data, observations, and collected evidence.
+            End-to-end EIR narrative generation runs through the{' '}
+            <strong>inspection workflow</strong> and backend AI services (not this preview page). Regulatory context comes
+            from <strong>Title 21 CFR</strong> (database or files) plus PDFs ingested into the knowledge base under{' '}
+            <code className="rounded bg-background/80 px-1 text-[11px]">data/</code>, especially{' '}
+            <strong>InvestigationsOperationsManualComplete.pdf</strong> (IOM inspection and reporting expectations) and{' '}
+            <strong>Establishment_Inspection_Report_(EIR).pdf</strong> (EIR format reference). Exported reports can follow{' '}
+            <strong>Establishment_Inspection_Report_(EIR).docx</strong>.
           </p>
         </div>
       </div>

@@ -24,6 +24,7 @@ import {
   SearchCheck,
   Send,
   Users,
+  LineChart,
   XCircle,
   ZoomIn,
   ZoomOut,
@@ -163,6 +164,27 @@ function isFdaSequencedMeta(metadataJson: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** Primary drafting workspace URL for this inspection (483 vs EIR phase). */
+/** Opens the New Inspection drafting UI (gated by WorkflowDraftWorkspace). */
+function newInspectionDraftHref(ins: Inspection): string {
+  const fdaSeq = isFdaSequencedMeta(ins.metadata_json);
+  const st = ins.status;
+  const q = new URLSearchParams({ inspectionId: ins.id });
+  if (st === 'eir_drafting' || st === 'eir_assigned') {
+    q.set('phase', 'eir');
+    return `/new-inspection?${q.toString()}`;
+  }
+  if (st === 'draft_completed' && !fdaSeq) {
+    q.set('phase', 'eir');
+    return `/new-inspection?${q.toString()}`;
+  }
+  if (st === 'rework_required' && fdaSeq) {
+    q.set('phase', 'eir');
+    return `/new-inspection?${q.toString()}`;
+  }
+  return `/new-inspection?${q.toString()}`;
 }
 
 const ACTION_ICONS: Record<string, React.ElementType> = {
@@ -592,6 +614,50 @@ export default function InspectionDetailPage() {
         <span className={`rounded-full px-3 py-1.5 text-sm font-semibold ${cfg.color} ${cfg.bg}`}>{statusLabelDisplay}</span>
       </div>
 
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">AI evaluation & review</p>
+            <p className="text-xs text-gray-500">
+              Drafting-quality scores (CFR match, grounding, structure), validation review, document workspace, and audit trail for this inspection.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/evaluation/${encodeURIComponent(inspection.id)}`}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-navy-700 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-navy-800"
+            >
+              <LineChart className="h-4 w-4" />
+              Evaluation dashboard
+            </Link>
+            <Link
+              href={`/evaluation?inspection_id=${encodeURIComponent(inspection.id)}`}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+            >
+              Run list (doc IDs)
+            </Link>
+            <Link
+              href={`/workflow/${encodeURIComponent(inspection.id)}/review`}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+            >
+              AI validation review
+            </Link>
+            <Link
+              href={`/workflow/${encodeURIComponent(inspection.id)}/document-review`}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+            >
+              Document review
+            </Link>
+            <Link
+              href={`/workflow/${encodeURIComponent(inspection.id)}/audit`}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+            >
+              Audit trail
+            </Link>
+          </div>
+        </div>
+      </div>
+
       {!isSupervisor && isFinalApproved && (
         <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
           <p className="font-semibold">Final approved package</p>
@@ -811,7 +877,7 @@ export default function InspectionDetailPage() {
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
               <button
-                onClick={() => router.push(`/new-inspection?inspectionId=${inspection.id}`)}
+                onClick={() => router.push(newInspectionDraftHref(inspection))}
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
               >
                 <FileText className="h-4 w-4" /> Open Latest Version
@@ -885,7 +951,7 @@ export default function InspectionDetailPage() {
               )}
               {!isSupervisor && status === 'in_progress' && (
                 <>
-                  <button onClick={() => router.push(`/new-inspection?inspectionId=${inspection.id}`)}
+                  <button onClick={() => router.push(newInspectionDraftHref(inspection))}
                     className="inline-flex items-center gap-2 rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white hover:bg-navy-800">
                     <FileText className="h-4 w-4" /> Draft 483 / EIR
                   </button>
@@ -898,7 +964,7 @@ export default function InspectionDetailPage() {
               {!isSupervisor && status === 'draft_completed' && (
                 <>
                   <button
-                    onClick={() => router.push(`/new-inspection?inspectionId=${inspection.id}`)}
+                    onClick={() => router.push(newInspectionDraftHref(inspection))}
                     className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
                   >
                     <SearchCheck className="h-4 w-4" /> Review Draft
@@ -926,6 +992,7 @@ export default function InspectionDetailPage() {
                   {fdaSequencedMeta && observations.length > 0 && (
                     <button
                       type="button"
+                      title="EIR can only be generated after FDA Form 483 approval and assignment to EIR drafting."
                       onClick={() => void handleGeneratePipelineEir()}
                       disabled={pipelineEirLoading}
                       className="inline-flex items-center gap-2 rounded-lg border border-navy-300 bg-navy-50 px-4 py-2 text-sm font-semibold text-navy-900 hover:bg-navy-100 disabled:opacity-50"
@@ -948,6 +1015,7 @@ export default function InspectionDetailPage() {
                   {fdaSequencedMeta && (
                     <button
                       type="button"
+                      title="EIR can only be generated after FDA Form 483 approval and assignment to EIR drafting."
                       onClick={() => void handleGeneratePipelineEir()}
                       disabled={pipelineEirLoading || observations.length === 0}
                       className="inline-flex items-center gap-2 rounded-lg border border-navy-300 bg-navy-50 px-4 py-2 text-sm font-semibold text-navy-900 hover:bg-navy-100 disabled:opacity-50"
@@ -957,7 +1025,7 @@ export default function InspectionDetailPage() {
                     </button>
                   )}
                   <button
-                    onClick={() => router.push(`/new-inspection?inspectionId=${inspection.id}`)}
+                    onClick={() => router.push(newInspectionDraftHref(inspection))}
                     className="inline-flex items-center gap-2 rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white hover:bg-navy-800"
                   >
                     <FileText className="h-4 w-4" /> Open EIR Draft
@@ -973,13 +1041,14 @@ export default function InspectionDetailPage() {
               )}
               {!isSupervisor && status === 'rework_required' && (
                 <>
-                  <button onClick={() => router.push(`/new-inspection?inspectionId=${inspection.id}`)}
+                  <button onClick={() => router.push(newInspectionDraftHref(inspection))}
                     className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
                     <FileText className="h-4 w-4" /> Open Rework Draft
                   </button>
                   {fdaSequencedMeta && observations.length > 0 && (
                     <button
                       type="button"
+                      title="EIR can only be generated after FDA Form 483 approval and assignment to EIR drafting."
                       onClick={() => void handleGeneratePipelineEir()}
                       disabled={pipelineEirLoading}
                       className="inline-flex items-center gap-2 rounded-lg border border-navy-300 bg-navy-50 px-4 py-2 text-sm font-semibold text-navy-900 hover:bg-navy-100 disabled:opacity-50"

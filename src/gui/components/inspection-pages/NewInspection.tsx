@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useDropzone } from 'react-dropzone';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -32,6 +33,7 @@ import {
   ListChecks,
   FileCheck,
 } from 'lucide-react';
+import { PIPELINE_RUN_STORAGE_KEY } from '@/components/evaluation/PipelineRunDashboard';
 import type {
   InspectionMetadata,
   DraftObservation,
@@ -49,6 +51,7 @@ import {
 } from '@/lib/api';
 import Form483Preview from '@/components/inspection-components/inspection/Form483Preview';
 import EIRPreview from '@/components/inspection-components/inspection/EIRPreview';
+import { are483ObservationsLockedFromStatus } from '@/lib/inspection-workflow-policy';
 
 const ESTABLISHMENT_TYPES = [
   'Pharmaceutical Manufacturer',
@@ -144,11 +147,24 @@ function normalizeDateForInput(value: string): string {
   return '';
 }
 
-export default function NewInspection() {
+export type NewInspectionProps = {
+  forcedInspectionId?: string | null;
+  /** Workflow route: 483 drafting vs EIR drafting (483 observations read-only). */
+  initialPhase?: '483' | 'eir';
+};
+
+export default function NewInspection({
+  forcedInspectionId = null,
+  initialPhase = '483',
+}: NewInspectionProps = {}) {
   const qc = useQueryClient();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const workflowInspectionId = searchParams.get('inspectionId');
+  const workflowInspectionId = forcedInspectionId ?? searchParams.get('inspectionId');
+  const draftPhase: '483' | 'eir' =
+    initialPhase === 'eir' || searchParams.get('phase') === 'eir' ? 'eir' : '483';
+  const isEirOnlyWorkspace = Boolean(workflowInspectionId && draftPhase === 'eir');
   const [step, setStep] = useState(0);
 
   const [metadata, setMetadata] = useState<InspectionMetadata>({
@@ -194,6 +210,11 @@ export default function NewInspection() {
   const [workflowFdaPipeline, setWorkflowFdaPipeline] = useState(false);
   const [workflowFdaSequenced, setWorkflowFdaSequenced] = useState(false);
   const [pipelineEirLoading, setPipelineEirLoading] = useState(false);
+  /** eNSpect workflow assignment title — sent with AI generation for evaluation lookup. */
+  const [workflowInspectionTitle, setWorkflowInspectionTitle] = useState('');
+
+  const obs483ReadOnly =
+    are483ObservationsLockedFromStatus(inspectionWorkflowStatus) || draftPhase === 'eir';
 
   /** FDA sequenced inspections: hide EIR preview/exports until workflow reaches EIR drafting (or later). Legacy inspections (no flag) keep combined 483+EIR preview at draft complete. */
   const EIR_PREVIEW_ALLOWED = [
@@ -211,6 +232,13 @@ export default function NewInspection() {
       inspectionWorkflowStatus &&
       !EIR_PREVIEW_ALLOWED.includes(inspectionWorkflowStatus),
   );
+
+  useEffect(() => {
+    if (!isEirOnlyWorkspace) return;
+    setStep(3);
+    setDocReviewTab('eir');
+    setDocType('eir');
+  }, [isEirOnlyWorkspace]);
 
   const collectAllNotes = useCallback((): string => {
     const parts: string[] = [];
@@ -232,6 +260,10 @@ export default function NewInspection() {
   }, [step]);
 
   useEffect(() => {
+    if (!workflowInspectionId) setWorkflowInspectionTitle('');
+  }, [workflowInspectionId]);
+
+  useEffect(() => {
     if (!workflowInspectionId) return;
     let active = true;
 
@@ -245,6 +277,7 @@ export default function NewInspection() {
         const data = await response.json();
         if (!active || !data.inspection) return;
         const loaded = data.inspection;
+        setWorkflowInspectionTitle(typeof loaded.title === 'string' ? loaded.title : '');
         const parsedMetadata = (() => {
           try {
             return JSON.parse(loaded.metadata_json || '{}');
@@ -291,7 +324,10 @@ export default function NewInspection() {
         }));
         setTypedNotes(loaded.raw_notes || '');
         setObservations(parsedObservations);
-        if (parsedObservations.length > 0) setStep(2);
+        if (parsedObservations.length > 0) {
+          if (draftPhase === 'eir') setStep(3);
+          else setStep(2);
+        }
       } catch (error) {
         console.error('Failed to load workflow inspection draft:', error);
       }
@@ -301,7 +337,7 @@ export default function NewInspection() {
     return () => {
       active = false;
     };
-  }, [workflowInspectionId]);
+  }, [workflowInspectionId, draftPhase]);
 
   const syncWorkflowDraft = useCallback(async (options?: {
     createVersion?: boolean;
@@ -310,14 +346,18 @@ export default function NewInspection() {
     eirJson?: string;
   }) => {
     if (!workflowInspectionId) return;
+    const include483Observations =
+      !are483ObservationsLockedFromStatus(inspectionWorkflowStatus) && draftPhase !== 'eir';
     const body: Record<string, unknown> = {
       metadata_json: JSON.stringify(metadata),
-      observations_json: JSON.stringify(observations),
       raw_notes: collectAllNotes(),
       create_version: options?.createVersion ?? true,
       version_type: options?.versionType || 'DRAFT',
       version_comments: options?.versionComments || 'Draft updated in New Inspection workspace',
     };
+    if (include483Observations) {
+      body.observations_json = JSON.stringify(observations);
+    }
     if (options?.eirJson !== undefined) {
       body.eir_json = options.eirJson;
     }
@@ -327,7 +367,7 @@ export default function NewInspection() {
       credentials: 'include',
       body: JSON.stringify(body),
     });
-  }, [workflowInspectionId, metadata, observations, collectAllNotes]);
+  }, [workflowInspectionId, metadata, observations, collectAllNotes, inspectionWorkflowStatus, draftPhase]);
 
   const refreshEirPreview = useCallback(async () => {
     if (observations.length === 0 || blockEirUntilEirDrafting) return;
@@ -509,12 +549,40 @@ export default function NewInspection() {
     }
     setGenerating(true);
     try {
-      const resp: GenerateObservationsResponse = await generateObservations({
-        raw_notes: raw,
-        establishment_type: metadata.establishment_type,
-        cfr_parts: selectedCFR,
-      });
+      let resp: GenerateObservationsResponse;
+      if (workflowInspectionId) {
+        const genRes = await fetch(`/api/inspections/${workflowInspectionId}/generate-483`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            raw_notes: raw,
+            establishment_type: metadata.establishment_type,
+            cfr_parts: selectedCFR,
+            inspection_title: workflowInspectionTitle.trim() || undefined,
+          }),
+        });
+        if (!genRes.ok) {
+          const err = await genRes.json().catch(() => ({}));
+          throw new Error(typeof err?.error === 'string' ? err.error : 'Generation failed');
+        }
+        resp = (await genRes.json()) as GenerateObservationsResponse;
+      } else {
+        resp = await generateObservations({
+          raw_notes: raw,
+          establishment_type: metadata.establishment_type,
+          cfr_parts: selectedCFR,
+          inspection_title: workflowInspectionTitle.trim() || undefined,
+        });
+      }
       setObservations(resp.observations);
+      try {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(PIPELINE_RUN_STORAGE_KEY, JSON.stringify(resp));
+        }
+      } catch {
+        /* ignore quota / private mode */
+      }
       if (workflowInspectionId) {
         await fetch(`/api/inspections/${workflowInspectionId}/data`, {
           method: 'PUT',
@@ -530,9 +598,14 @@ export default function NewInspection() {
           }),
         });
       }
-      toast.success(`Generated ${resp.observations.length} draft observations`);
-    } catch {
-      toast.error('Failed to generate observations');
+      toast.success(`Generated ${resp.observations.length} draft observations`, {
+        action: {
+          label: 'Pipeline dashboard',
+          onClick: () => router.push('/evaluation/pipeline'),
+        },
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to generate observations');
     } finally {
       setGenerating(false);
     }
@@ -542,19 +615,40 @@ export default function NewInspection() {
     const raw = collectAllNotes();
     setGenerating(true);
     try {
-      const resp = await generateObservations({
-        raw_notes: raw,
-        establishment_type: metadata.establishment_type,
-        cfr_parts: selectedCFR,
-      });
+      let resp: GenerateObservationsResponse;
+      if (workflowInspectionId) {
+        const genRes = await fetch(`/api/inspections/${workflowInspectionId}/generate-483`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            raw_notes: raw,
+            establishment_type: metadata.establishment_type,
+            cfr_parts: selectedCFR,
+            inspection_title: workflowInspectionTitle.trim() || undefined,
+          }),
+        });
+        if (!genRes.ok) {
+          const err = await genRes.json().catch(() => ({}));
+          throw new Error(typeof err?.error === 'string' ? err.error : 'Regeneration failed');
+        }
+        resp = (await genRes.json()) as GenerateObservationsResponse;
+      } else {
+        resp = await generateObservations({
+          raw_notes: raw,
+          establishment_type: metadata.establishment_type,
+          cfr_parts: selectedCFR,
+          inspection_title: workflowInspectionTitle.trim() || undefined,
+        });
+      }
       if (resp.observations[idx]) {
         setObservations(prev =>
           prev.map((o, i) => (i === idx ? resp.observations[idx] : o)),
         );
         toast.success('Observation regenerated');
       }
-    } catch {
-      toast.error('Regeneration failed');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Regeneration failed');
     } finally {
       setGenerating(false);
     }
@@ -651,7 +745,7 @@ export default function NewInspection() {
         } catch {
           toast.info('Documents saved. You can update workflow status from the inspection page.');
         }
-        router.push(`/workflow/${workflowInspectionId}`);
+        router.push(`/workflow/${workflowInspectionId}?stay=1`);
       }
     } catch {
       toast.error('Download failed');
@@ -744,10 +838,24 @@ export default function NewInspection() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-navy-800 mb-1">New Inspection</h1>
-        <p className="text-gray-500 mb-8">Draft FDA 483 observations and EIR narratives</p>
+        <h1 className="text-2xl font-bold text-navy-800 mb-1">
+          {!workflowInspectionId || pathname?.includes('/new-inspection')
+            ? 'New Inspection'
+            : 'Inspection drafting workspace'}
+        </h1>
+        <p className="text-gray-500 mb-8">
+          {isEirOnlyWorkspace
+            ? 'EIR drafting — Form FDA 483 observations are read-only. Refine narrative and exports from the review workspace.'
+            : 'Draft FDA 483 observations and EIR narratives'}
+        </p>
 
         {/* Progress Stepper */}
+        {isEirOnlyWorkspace ? (
+          <div className="mb-8 rounded-lg border border-navy-200 bg-navy-50/90 px-4 py-3 text-sm text-navy-900">
+            <strong>EIR drafting workspace</strong> — 483 observations are locked for editing. Use pipeline tools and EIR
+            preview below; return to the assignment for workflow actions.
+          </div>
+        ) : (
         <div className="mb-10">
           <div className="flex items-center justify-between">
             {STEPS.map((label, i) => (
@@ -783,9 +891,10 @@ export default function NewInspection() {
             ))}
           </div>
         </div>
+        )}
 
         {/* Step 1: Metadata */}
-        {step === 0 && (
+        {!isEirOnlyWorkspace && step === 0 && (
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
               <ClipboardList className="w-5 h-5 text-navy-700" />
@@ -1038,7 +1147,7 @@ export default function NewInspection() {
         )}
 
         {/* Step 2: Input Notes */}
-        {step === 1 && (
+        {!isEirOnlyWorkspace && step === 1 && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border">
               {/* Tabs */}
@@ -1299,7 +1408,8 @@ export default function NewInspection() {
                             : prev.filter(v => v !== cfr.value),
                         );
                       }}
-                      className="mt-0.5 rounded border-gray-300 text-navy-700 focus:ring-navy-500"
+                      disabled={obs483ReadOnly}
+                      className="mt-0.5 rounded border-gray-300 text-navy-700 focus:ring-navy-500 disabled:opacity-50"
                     />
                     <span className="text-sm text-gray-700 group-hover:text-gray-900">
                       {cfr.label}
@@ -1312,12 +1422,18 @@ export default function NewInspection() {
         )}
 
         {/* Step 3: AI Generation */}
-        {step === 2 && (
+        {!isEirOnlyWorkspace && step === 2 && (
           <div className="space-y-6">
+            {obs483ReadOnly && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Form FDA 483 observations are locked after submission or in EIR phase. Request rework from the workflow if
+                changes are required.
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={handleGenerate}
-                disabled={generating}
+                disabled={generating || obs483ReadOnly}
                 className="px-6 py-3 bg-navy-700 text-white rounded-lg font-medium text-sm hover:bg-navy-800 disabled:opacity-60 flex items-center gap-2 transition-colors"
               >
                 {generating ? (
@@ -1330,7 +1446,7 @@ export default function NewInspection() {
               {observations.length > 0 && (
                 <button
                   onClick={handleGenerate}
-                  disabled={generating}
+                  disabled={generating || obs483ReadOnly}
                   className="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium text-sm hover:bg-gray-50 disabled:opacity-60 flex items-center gap-2 transition-colors"
                 >
                   <RefreshCw className="w-4 h-4" />
@@ -1367,7 +1483,7 @@ export default function NewInspection() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleRegenerateOne(idx)}
-                      disabled={generating}
+                      disabled={generating || obs483ReadOnly}
                       className="p-1.5 text-gray-400 hover:text-navy-700 transition-colors disabled:opacity-50"
                       title="Regenerate"
                     >
@@ -1375,7 +1491,8 @@ export default function NewInspection() {
                     </button>
                     <button
                       onClick={() => deleteObservation(idx)}
-                      className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                      disabled={obs483ReadOnly}
+                      className="p-1.5 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40"
                       title="Delete"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -1392,24 +1509,26 @@ export default function NewInspection() {
                       value={obs.observation_text}
                       onChange={e => updateObservation(idx, 'observation_text', e.target.value)}
                       rows={4}
-                      className={TEXTAREA_CLASS}
+                      readOnly={obs483ReadOnly}
+                      className={`${TEXTAREA_CLASS} ${obs483ReadOnly ? 'cursor-not-allowed bg-gray-50 text-gray-700' : ''}`}
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                      CFR Citation (AI draft)
+                      Title 21 CFR citation (AI draft)
                     </label>
                     <input
                       type="text"
                       value={obs.cfr_citation}
                       onChange={e => updateObservation(idx, 'cfr_citation', e.target.value)}
-                      className={INPUT_CLASS}
+                      readOnly={obs483ReadOnly}
+                      className={`${INPUT_CLASS} ${obs483ReadOnly ? 'cursor-not-allowed bg-gray-50' : ''}`}
                     />
                     {obs.matched_citation && (
                       <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
                         <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">
-                          FDA Citation Match
+                          Title 21 reference match (≥95%)
                         </div>
                         <div className="text-sm font-medium text-blue-900">
                           {obs.matched_citation}
@@ -1417,11 +1536,28 @@ export default function NewInspection() {
                         {obs.citation_title && (
                           <div className="text-xs text-blue-800 mt-0.5">{obs.citation_title}</div>
                         )}
+                        {(obs.citation_volume_label ||
+                          obs.citation_part_label ||
+                          obs.citation_chapter_label ||
+                          obs.citation_subchapter_label) && (
+                          <div className="text-[11px] text-blue-800/90 mt-1 space-y-0.5">
+                            {obs.citation_volume_label ? <div>Volume: {obs.citation_volume_label}</div> : null}
+                            {obs.citation_chapter_label ? <div>{obs.citation_chapter_label}</div> : null}
+                            {obs.citation_subchapter_label ? <div>{obs.citation_subchapter_label}</div> : null}
+                            {obs.citation_part_label ? <div>{obs.citation_part_label}</div> : null}
+                          </div>
+                        )}
                         {typeof obs.citation_match_score === 'number' && (
                           <div className="text-[11px] text-blue-700 mt-0.5">
                             Match score: {(obs.citation_match_score * 100).toFixed(1)}%
                           </div>
                         )}
+                      </div>
+                    )}
+                    {!obs.matched_citation && obs.cfr_citation?.trim() && (
+                      <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+                        No Title 21 row matched at the required threshold (≥95%). Correct the citation or add it to the CFR
+                        dataset (CSV/XML in <code className="font-mono text-[10px]">data/</code>).
                       </div>
                     )}
                   </div>
@@ -1440,7 +1576,8 @@ export default function NewInspection() {
                             updated[ei] = e.target.value;
                             updateObservation(idx, 'evidence_list', updated);
                           }}
-                          className={INPUT_CLASS}
+                          readOnly={obs483ReadOnly}
+                          className={`${INPUT_CLASS} ${obs483ReadOnly ? 'cursor-not-allowed bg-gray-50' : ''}`}
                         />
                         {obs.evidence_list.length > 1 && (
                           <button
@@ -1451,7 +1588,8 @@ export default function NewInspection() {
                                 obs.evidence_list.filter((_, j) => j !== ei),
                               )
                             }
-                            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                            disabled={obs483ReadOnly}
+                            className="p-2 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -1462,7 +1600,8 @@ export default function NewInspection() {
                       onClick={() =>
                         updateObservation(idx, 'evidence_list', [...obs.evidence_list, ''])
                       }
-                      className="text-xs text-navy-700 hover:text-navy-800 font-medium flex items-center gap-1"
+                      disabled={obs483ReadOnly}
+                      className="text-xs text-navy-700 hover:text-navy-800 font-medium flex items-center gap-1 disabled:opacity-40"
                     >
                       <Plus className="w-3 h-3" /> Add Evidence
                     </button>
@@ -1509,7 +1648,8 @@ export default function NewInspection() {
             {observations.length > 0 && (
               <button
                 onClick={addBlankObservation}
-                className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-500 hover:border-navy-300 hover:text-navy-700 transition-colors flex items-center justify-center gap-2"
+                disabled={obs483ReadOnly}
+                className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-500 hover:border-navy-300 hover:text-navy-700 transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Plus className="w-4 h-4" />
                 Add Observation
@@ -1639,6 +1779,24 @@ export default function NewInspection() {
                 )}
               </div>
             </div>
+
+            {workflowInspectionId ? (
+              <div className="flex flex-col gap-3 rounded-xl border border-navy-200 bg-navy-50/90 p-5 sm:flex-row sm:items-center sm:justify-between dark:border-navy-800/60 dark:bg-navy-950/40">
+                <div>
+                  <p className="text-sm font-semibold text-navy-900 dark:text-navy-100">Continue in eNSpect workflow</p>
+                  <p className="mt-1 text-xs text-navy-800/90 dark:text-navy-200/80">
+                    When drafting is ready, open the assignment to mark draft complete, submit for supervisor review, and follow FDA 483 → EIR steps.
+                  </p>
+                </div>
+                <Link
+                  href={`/workflow/${workflowInspectionId}?stay=1`}
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-navy-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-navy-800 dark:bg-cyan-700 dark:hover:bg-cyan-600"
+                >
+                  Open inspection workflow
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
+              </div>
+            ) : null}
 
             {/* Document Type Toggle */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -1793,13 +1951,13 @@ export default function NewInspection() {
         <div className="flex items-center justify-between mt-8 pb-8">
           <button
             onClick={goPrev}
-            disabled={step === 0}
+            disabled={step === 0 || isEirOnlyWorkspace}
             className="px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
             Previous
           </button>
-          {step < 3 ? (
+          {!isEirOnlyWorkspace && step < 3 ? (
             <button
               onClick={goNext}
               className="px-5 py-2.5 bg-navy-700 text-white rounded-lg text-sm font-medium hover:bg-navy-800 flex items-center gap-2 transition-colors"
@@ -1807,6 +1965,14 @@ export default function NewInspection() {
               Next
               <ChevronRight className="w-4 h-4" />
             </button>
+          ) : workflowInspectionId ? (
+            <Link
+              href={`/workflow/${workflowInspectionId}?stay=1`}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-navy-700 text-white rounded-lg text-sm font-medium hover:bg-navy-800 transition-colors dark:bg-cyan-700 dark:hover:bg-cyan-600"
+            >
+              Open inspection workflow
+              <ChevronRight className="w-4 h-4" />
+            </Link>
           ) : (
             <div />
           )}

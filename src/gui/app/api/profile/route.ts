@@ -3,6 +3,7 @@ import pool from "@/lib/db/client";
 import { createSessionToken } from "@/lib/auth/auth-service";
 import { getCurrentUserFromRequest } from "@/lib/auth/get-current-user";
 import { setSessionCookie } from "@/lib/auth/session";
+import { jsonServerError } from "@/lib/server/json-error";
 
 export const dynamic = "force-dynamic";
 
@@ -91,17 +92,18 @@ export async function GET(req: NextRequest) {
     await ensureProfilesTable();
     const user = await getUserByEmail(authUser.email);
 
+    const profile = buildProfilePayload(user, {
+      firstName: authUser.first_name,
+      lastName: authUser.last_name,
+      email: authUser.email,
+      fdaPosition: authUser.fda_position ?? undefined,
+    });
+    // Always expose the authenticated user id (UUID). Email lookup can miss edge cases and would otherwise return id: "".
     return NextResponse.json({
-      profile: buildProfilePayload(user, {
-        firstName: authUser.first_name,
-        lastName: authUser.last_name,
-        email: authUser.email,
-        fdaPosition: authUser.fda_position ?? undefined,
-      }),
+      profile: { ...profile, id: user?.id ?? authUser.id },
     });
   } catch (error) {
-    console.error("Profile fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });
+    return jsonServerError("Failed to fetch profile", error);
   }
 }
 
@@ -118,6 +120,7 @@ export async function PUT(req: NextRequest) {
     const lastName = String(body.last_name ?? "").trim();
     const email = String(body.email ?? "").trim().toLowerCase();
     const phone = String(body.phone ?? "").trim();
+    const fdaPosition = String(body.fda_position ?? "").trim();
     const address = String(body.address ?? "").trim();
     const city = String(body.city ?? "").trim();
     const state = String(body.state ?? "").trim();
@@ -150,10 +153,10 @@ export async function PUT(req: NextRequest) {
     await pool.query(
       `
         UPDATE users
-        SET first_name = $1, last_name = $2, email = $3, phone = $4, updated_at = NOW()
-        WHERE id = $5
+        SET first_name = $1, last_name = $2, email = $3, phone = $4, fda_position = $5, updated_at = NOW()
+        WHERE id = $6
       `,
-      [firstName, lastName, email, phone || null, currentUser.id]
+      [firstName, lastName, email, phone || null, fdaPosition || null, currentUser.id]
     );
 
     await pool.query(
@@ -173,14 +176,15 @@ export async function PUT(req: NextRequest) {
     );
 
     const updated = await getUserByEmail(email);
+    const profilePayload = buildProfilePayload(updated, {
+      firstName,
+      lastName,
+      email,
+      fdaPosition: updated?.fda_position ?? fdaPosition,
+    });
     const response = NextResponse.json({
       message: "Profile updated successfully.",
-      profile: buildProfilePayload(updated, {
-        firstName,
-        lastName,
-        email,
-        fdaPosition: authUser.fda_position ?? undefined,
-      }),
+      profile: { ...profilePayload, id: updated?.id ?? currentUser.id },
     });
 
     const refreshedUser = {
@@ -188,15 +192,14 @@ export async function PUT(req: NextRequest) {
       first_name: firstName,
       last_name: lastName,
       email,
-      fda_position: authUser.fda_position,
+      fda_position: updated?.fda_position ?? fdaPosition,
       role: (currentUser.role as "supervisor" | "investigator") || "investigator",
     };
     setSessionCookie(response, createSessionToken(refreshedUser));
 
     return response;
   } catch (error) {
-    console.error("Profile update error:", error);
-    return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
+    return jsonServerError("Failed to update profile", error);
   }
 }
 

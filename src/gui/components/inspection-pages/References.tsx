@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { Search, BookOpen, Scale } from 'lucide-react';
+import EirWorkflowGuide from './EirWorkflowGuide';
 
 interface CFREntry {
   part: string;
@@ -231,11 +232,7 @@ export default function References() {
         </div>
       )}
 
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-        <p className="text-sm font-medium text-amber-800">
-          Phase 2: EIR (Establishment Inspection Report) generation — Coming Soon
-        </p>
-      </div>
+      <EirWorkflowGuide />
     </div>
   );
 }
