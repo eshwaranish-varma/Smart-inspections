@@ -86,7 +86,7 @@ export default function Layout() {
         }
 
         if (active) {
-          setProfile(data.profile);
+          setProfile(data.profile ?? null);
         }
       } catch (error) {
         console.warn("Failed to load dashboard profile:", error);
