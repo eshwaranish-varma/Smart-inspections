@@ -20,7 +20,7 @@ faiss-cpu>=1.8.0
 pymupdf>=1.23.0
 pytesseract>=0.3.10
 Pillow>=10.0.0
-opencv-python-headless>=4.9.0
+# opencv-python-headless — optional, needed only for handwritten OCR preprocessing
 
 # Document generation
 python-docx>=1.1.0
@@ -35,8 +35,9 @@ jiwer>=3.0.0
 # Fuzzy matching (evidence post-process)
 rapidfuzz>=3.6.0
 
-# Local embeddings (CFR semantic index + semantic grounding)
-sentence-transformers>=2.6.0
+# Local embeddings — optional: pulls in torch (~800MB).
+# Uncomment if running on >=2GB RAM instances. Falls back to OpenAI embeddings when absent.
+# sentence-transformers>=2.6.0
 numpy>=1.26.0
 
 # Utilities
