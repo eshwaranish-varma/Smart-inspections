@@ -1,17 +1,75 @@
-node_modules
+# Git & Version Control
 .git
+.gitignore
+.gitattributes
+.github
+
+# Python
 __pycache__
-*.py[cod]
-*$py.class
+*.pyc
+*.pyo
+*.pyd
 .Python
-.venv
-venv
-.env
-.env.*
-*.log
+*.egg-info
+.eggs
 dist
 build
-.next
-*.db
+*.egg
+.venv
+venv
+env
+
+# IDE & Editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+*.code-workspace
+
+# Testing & CI
 .pytest_cache
-.mypy_cache
+.coverage
+.tox
+.env.test
+pytest.ini
+coverage.xml
+
+# Documentation & Docs
+/docs
+docs.zip
+/generated_docs
+*.md
+
+# Data & Artifacts (TOO LARGE FOR DEPLOYMENT)
+/data
+/artifacts
+/notebooks
+/logs
+
+# Docker & Compose
+docker-compose*.yml
+Dockerfile*
+
+# Root Level (Keep only what's needed)
+/src
+/config
+/tests
+/scripts
+/supabase
+/frontend
+/frontend-v2
+setup.py
+README.md
+LICENSE
+render.yaml
+requirements.txt
+requirements-dev.txt
+
+# Temporary files
+*.tmp
+*.temp
+.cache
+.tmp
+temp/
