@@ -1,5 +1,6 @@
+import time
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
@@ -77,6 +78,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    elapsed_ms = round((time.time() - start) * 1000, 1)
+    if not request.url.path.startswith("/health"):
+        logger.info(
+            "%s %s -> %s (%.1fms)",
+            request.method,
+            request.url.path,
+            response.status_code,
+            elapsed_ms,
+        )
+    return response
+
+
 from app.routers import observations, ai, documents, ocr, library, citations, references, eval as eval_router  # noqa: E402
 from app.routers import pipeline_dashboard  # noqa: E402
 from app.routers import evaluation_dashboard  # noqa: E402
@@ -98,6 +116,12 @@ app.include_router(references.router, prefix="/api/references", tags=["Reference
 @app.get("/")
 async def root():
     return {"message": "Smart Inspections API", "version": "1.0.0", "status": "running"}
+
+
+@app.get("/health")
+async def health_root():
+    """Root-level health check for Render and load balancers."""
+    return {"status": "ok"}
 
 
 @app.get("/api/health")

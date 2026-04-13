@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 from pathlib import Path
 from typing import Any
@@ -9,6 +10,11 @@ _LOCK = threading.Lock()
 
 _STORE_DIR = Path(__file__).resolve().parent
 _LOG_FILE = _STORE_DIR / "evaluation_logs.json"
+
+if os.getenv("ENVIRONMENT", "development").strip().lower() in ("production", "prod"):
+    _tmp_dir = Path("/tmp/smart_inspections")
+    _tmp_dir.mkdir(parents=True, exist_ok=True)
+    _LOG_FILE = _tmp_dir / "evaluation_logs.json"
 
 
 def _ensure_file() -> None:

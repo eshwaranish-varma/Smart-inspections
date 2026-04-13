@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Self
 
@@ -298,7 +299,13 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",")]
+        origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        if "*" in origins:
+            return ["*"]
+        render_url = os.getenv("RENDER_EXTERNAL_URL", "").strip()
+        if render_url and render_url not in origins:
+            origins.append(render_url)
+        return origins
 
     @property
     def cfr_index_path(self) -> Path:
