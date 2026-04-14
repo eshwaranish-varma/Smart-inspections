@@ -97,6 +97,17 @@ export default function WorkflowPage() {
   const [creating, setCreating] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<{
+    investigator_id: string;
+    investigator_name: string;
+    total_inspections: number;
+    completed_count: number;
+    avg_completion_days: number | null;
+    last_inspection_year: string | null;
+    last_inspection_date: string | null;
+    last_status: string | null;
+  }[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   const [newInspection, setNewInspection] = useState({
     title: '', firmName: '', feiNumber: '', establishmentType: '', districtOffice: '',
@@ -171,6 +182,20 @@ export default function WorkflowPage() {
         queryClient.invalidateQueries({ queryKey: dashboardPublishStatsQueryKey });
       }
     } finally { setCreating(false); }
+  }
+
+  function openAssignModal(inspectionId: string) {
+    setShowAssignModal(inspectionId);
+    setSuggestions([]);
+    const insp = inspections.find(i => i.id === inspectionId);
+    if (insp?.firm_name) {
+      setSuggestionsLoading(true);
+      fetch(`/api/inspections/suggestions?company_name=${encodeURIComponent(insp.firm_name)}`, { credentials: 'include' })
+        .then(r => r.ok ? r.json() : { suggestions: [] })
+        .then(data => setSuggestions(data.suggestions || []))
+        .catch(() => setSuggestions([]))
+        .finally(() => setSuggestionsLoading(false));
+    }
   }
 
   async function handleAssign(inspectionId: string, investigatorId: string) {
@@ -339,7 +364,7 @@ export default function WorkflowPage() {
                     <div className="flex items-center justify-end gap-2">
                       {isSupervisor && insp.status === 'created' && (
                         <button
-                          onClick={() => setShowAssignModal(insp.id)}
+                          onClick={() => openAssignModal(insp.id)}
                           className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
                         >
                           Assign
@@ -432,8 +457,76 @@ export default function WorkflowPage() {
       {/* Assign Modal */}
       {showAssignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
             <h2 className="text-lg font-bold text-gray-900 mb-4">Assign Investigator</h2>
+
+            {/* Suggestions based on company history */}
+            {suggestionsLoading && (
+              <div className="mb-4 flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                <Loader2 className="h-3 w-3 animate-spin" /> Loading suggestions...
+              </div>
+            )}
+            {suggestions.length > 0 && (
+              <div className="mb-5">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Why these investigators are suggested</p>
+                <div className="space-y-3">
+                  {suggestions.map(s => {
+                    const confidence = s.completed_count >= 3 ? 'HIGH' : s.completed_count >= 1 ? 'MEDIUM' : 'LOW';
+                    const confidenceColor = confidence === 'HIGH' ? 'text-green-700 bg-green-100' : confidence === 'MEDIUM' ? 'text-amber-700 bg-amber-100' : 'text-gray-600 bg-gray-100';
+                    const statusLabel = s.last_status ? STATUS_CONFIG[s.last_status]?.label || s.last_status.replace(/_/g, ' ') : null;
+                    return (
+                      <button
+                        key={s.investigator_id}
+                        onClick={() => handleAssign(showAssignModal, s.investigator_id)}
+                        disabled={assigning}
+                        className="w-full rounded-xl border border-green-200 bg-gradient-to-br from-green-50 to-white p-4 text-left hover:border-green-400 hover:shadow-md transition-all disabled:opacity-50"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-200 text-sm font-bold text-green-800">
+                              {s.investigator_name.split(' ').map(n => n[0]).join('')}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-gray-900">{s.investigator_name}</p>
+                              <span className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${confidenceColor}`}>
+                                Confidence: {confidence}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="shrink-0 rounded-lg bg-green-600 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">SELECT</span>
+                        </div>
+                        <div className="mt-3 space-y-1.5 pl-14">
+                          {s.last_inspection_year && (
+                            <p className="flex items-center gap-1.5 text-xs text-gray-700">
+                              <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                              Previously inspected this company ({s.last_inspection_year})
+                            </p>
+                          )}
+                          <p className="flex items-center gap-1.5 text-xs text-gray-700">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                            Completed {s.completed_count} of {s.total_inspections} inspection{s.total_inspections !== 1 ? 's' : ''} successfully
+                          </p>
+                          {s.avg_completion_days != null && (
+                            <p className="flex items-center gap-1.5 text-xs text-gray-700">
+                              <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                              Avg completion: {s.avg_completion_days} days
+                            </p>
+                          )}
+                          {statusLabel && (
+                            <p className="flex items-center gap-1.5 text-xs text-gray-700">
+                              <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                              Last inspection: {statusLabel}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">All investigators</p>
             <div className="space-y-2">
               {investigators.map(inv => (
                 <button

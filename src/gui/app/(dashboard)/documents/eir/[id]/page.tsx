@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { Rocket, ChevronRight } from "lucide-react";
+import { Loader2, Rocket, ChevronRight } from "lucide-react";
 import PageHeader from "@/components/layout/PageHeader";
 import { cn } from "@/lib/utils";
+import { useWorkflowGuard } from "@/hooks/useWorkflowGuard";
+import { canAccessEirDocument } from "@/lib/inspection-workflow-policy";
 
 const sectionTree = [
   { id: "cover", label: "Cover Page" },
@@ -64,8 +66,20 @@ const placeholderContent: Record<string, { title: string; body: string }> = {
 
 export default function EIRDetailPage() {
   const params = useParams();
+  const inspectionId = params.id as string;
+  const { allowed, loading: guardLoading } = useWorkflowGuard(inspectionId, canAccessEirDocument);
   const [activeSection, setActiveSection] = useState("cover");
   const content = placeholderContent[activeSection];
+
+  if (guardLoading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-navy-600" />
+      </div>
+    );
+  }
+
+  if (!allowed) return null;
 
   return (
     <div>

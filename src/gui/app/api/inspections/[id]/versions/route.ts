@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserFromRequest } from "@/lib/auth/get-current-user";
-import { getInspectionVersions } from "@/lib/db/inspection-service";
+import { getInspectionById, canUserAccessInspection, getInspectionVersions } from "@/lib/db/inspection-service";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +9,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const user = await getCurrentUserFromRequest(req);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const inspection = await getInspectionById(id);
+    if (!inspection) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!canUserAccessInspection(inspection, user.id, user.role)) {
+      return NextResponse.json({ error: "Access restricted" }, { status: 403 });
+    }
+
     const versions = await getInspectionVersions(id);
     return NextResponse.json({ versions });
   } catch (error) {

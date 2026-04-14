@@ -8,6 +8,7 @@ import {
   updateInspectionData,
   isFda483Pipeline,
   isFdaSequencedWorkflow,
+  canUserAccessInspection,
   type InspectionStatus,
 } from "@/lib/db/inspection-service";
 
@@ -42,6 +43,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const current = await getInspectionById(id);
     if (!current) {
       return NextResponse.json({ error: "Inspection not found" }, { status: 404 });
+    }
+
+    if (!canUserAccessInspection(current, user.id, user.role)) {
+      return NextResponse.json({ error: "Access restricted — this inspection is not assigned to you." }, { status: 403 });
     }
 
     const mapping =

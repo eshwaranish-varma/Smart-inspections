@@ -120,7 +120,7 @@ class Settings(BaseSettings):
 
     # --- CFR citation retrieval (fuzzy | semantic | hybrid) ---
     cfr_match_mode: str = Field(
-        default="fuzzy",
+        default="hybrid",
         description="fuzzy (legacy) | semantic (embeddings) | hybrid (merge both). Set hybrid for semantic CFR.",
     )
     cfr_confidence_threshold: float = Field(

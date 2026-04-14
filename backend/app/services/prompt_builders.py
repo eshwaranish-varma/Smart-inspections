@@ -10,6 +10,11 @@ from __future__ import annotations
 def evidence_mode_instructions(evidence_mode: str, *, strict_retrieved: bool) -> str:
     """Extra rules aligned with evaluation (substring vs semantic grounding)."""
     em = (evidence_mode or "balanced").strip().lower()
+    extractive_rule = (
+        "\nEVIDENCE EXTRACTION (MANDATORY): Every item in evidence_used MUST be an EXACT substring "
+        "copied character-for-character from the RAW OBSERVATION or RAW INSPECTION NOTES. "
+        "Do NOT paraphrase, summarize, or rewrite evidence. If no exact quote exists, omit the item."
+    )
     if em == "strict":
         base = (
             "EVIDENCE MODE: STRICT — Use ONLY the provided evidence snippets below (and RAW INSPECTION NOTES). "
@@ -18,14 +23,16 @@ def evidence_mode_instructions(evidence_mode: str, *, strict_retrieved: bool) ->
         )
     else:
         base = (
-            "EVIDENCE MODE: BALANCED — Prefer verbatim phrases from RAW INSPECTION NOTES and the retrieved excerpts; "
-            "minor rewording is allowed only when meaning is unchanged and grounding remains verifiable."
+            "EVIDENCE MODE: BALANCED — Copy verbatim phrases from RAW INSPECTION NOTES and the retrieved excerpts. "
+            "Each evidence_used item must be a direct substring of the input. "
+            "Minor OCR-noise cleanup (spacing, punctuation) is allowed, but NO paraphrasing or rewording."
         )
     if strict_retrieved:
         base += (
             "\nUse evidence phrases exactly as written in the RETRIEVED NOTE EXCERPTS when listing evidence_used, "
             "unless normalization is necessary for OCR noise."
         )
+    base += extractive_rule
     return base
 
 

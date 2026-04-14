@@ -18,7 +18,7 @@ from app.services.ai_service import AIService, REVIEW_FLAG_CFR_NOT_EXACT_REFEREN
 from app.services.citation_service import CitationService
 from app.config import settings
 from app.deps import get_db, get_kb
-from app.evaluation import evaluate_ai_output, save_evaluation
+from app.evaluation import evaluate_ai_output, save_evaluation, validate_observation_count
 from app.services.observation_validation import build_validation_payload, infer_evidence_sources
 from app.services.draft_483_pipeline import (
     segmentation_quality_heuristic,
@@ -369,6 +369,7 @@ def _pipeline_to_draft_observations(
                 observation_text=d.drafted_text,
                 cfr_citation=d.cfr_citation or "",
                 evidence_list=ev_list,
+                evidence_grounding_types=list(d.evidence_grounding_types or []),
                 source_notes_excerpt=excerpt,
                 confidence_score=0.0,
                 confidence=0.0,
@@ -496,6 +497,14 @@ async def generate_observations(req: GenerateObservationsRequest, db: Session = 
     n_draft = len(drafted_outputs)
     mapping_valid = n_seg == n_draft
     count_rationale = "Segmentation (LLM) + one LLM call per observation for Form FDA 483 drafting."
+
+    count_check = validate_observation_count(segmented, drafted_outputs)
+    observation_count_mismatch = count_check["status"] == "failed"
+    if observation_count_mismatch:
+        logger.error(
+            "PIPELINE RED — Observation count mismatch: %d segmented vs %d drafted (%s)",
+            n_seg, n_draft, count_check["reason"],
+        )
 
     observations = _pipeline_to_draft_observations(segmented, drafted_outputs)
 
@@ -641,8 +650,9 @@ async def generate_observations(req: GenerateObservationsRequest, db: Session = 
     scores["summary"] = metrics_model.summary.model_dump(mode="json", by_alias=True)
     segmentation_note = SEGMENTATION_WARNING_NOTE if segmentation_warning else None
     scores["segmentation_note"] = segmentation_note
-    pipeline_integrity = bool(mapping_valid and segmentation_valid)
+    pipeline_integrity = bool(mapping_valid and segmentation_valid and not observation_count_mismatch)
     scores["pipeline_integrity"] = pipeline_integrity
+    scores["observation_count_mismatch"] = observation_count_mismatch
 
     payload_out = {
         "observations": [o.model_dump() for o in observations],
@@ -690,6 +700,13 @@ async def generate_observations(req: GenerateObservationsRequest, db: Session = 
                 response_summary={"doc_id": doc_id, "partial": True},
             )
 
+    mismatch_warning_msg: str | None = None
+    if observation_count_mismatch:
+        mismatch_warning_msg = (
+            f"Observation count mismatch detected: {n_seg} input observations vs {n_draft} drafted outputs. "
+            "AI may have split or dropped observations incorrectly."
+        )
+
     return GenerateObservationsResponse(
         status="success",
         run_timestamp=run_timestamp,
@@ -711,6 +728,7 @@ async def generate_observations(req: GenerateObservationsRequest, db: Session = 
         segmentation_note=segmentation_note,
         summary=metrics_model.summary,
         pipeline_integrity=pipeline_integrity,
+        observation_count_mismatch_warning=mismatch_warning_msg,
         metrics=metrics_model,
     )
 

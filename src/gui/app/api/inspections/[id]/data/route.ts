@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserFromRequest } from "@/lib/auth/get-current-user";
-import { getInspectionById, updateInspectionData } from "@/lib/db/inspection-service";
+import { getInspectionById, updateInspectionData, canUserAccessInspection } from "@/lib/db/inspection-service";
 import { canUpdate483Observations } from "@/lib/inspection-workflow-policy";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -9,11 +9,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const user = await getCurrentUserFromRequest(req);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const current = await getInspectionById(id);
+    if (!current) return NextResponse.json({ error: "Inspection not found" }, { status: 404 });
+    if (!canUserAccessInspection(current, user.id, user.role)) {
+      return NextResponse.json({ error: "Access restricted" }, { status: 403 });
+    }
+
     const body = await req.json();
 
     if (body.observations_json !== undefined) {
-      const current = await getInspectionById(id);
-      if (!current) return NextResponse.json({ error: "Inspection not found" }, { status: 404 });
       const obsGate = canUpdate483Observations(current, user.id, user.role);
       if (!obsGate.ok) {
         return NextResponse.json({ error: obsGate.reason }, { status: 403 });

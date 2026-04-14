@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ComponentType } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
   ClipboardList,
@@ -222,7 +222,7 @@ export default function Dashboard() {
           </p>
         </div>
         <Link
-          to="/workflow"
+          href="/workflow"
           className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0B1F3A] via-[#123d72] to-[#2F7A7A] px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
         >
           <FilePlus className="h-4 w-4" />
@@ -271,7 +271,7 @@ export default function Dashboard() {
           {quickLinks.map(({ to, title, description, icon: Icon }) => (
             <Link
               key={to}
-              to={to}
+              href={to}
               className="group flex flex-col rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-slate-900"
             >
               <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-navy-50 transition-colors group-hover:bg-navy-100 dark:bg-slate-800 dark:group-hover:bg-slate-700">

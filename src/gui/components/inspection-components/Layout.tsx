@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import {
   LayoutDashboard,
   BarChart3,
@@ -44,8 +44,8 @@ type DashboardProfile = {
   zip_code?: string;
 };
 
-export default function Layout() {
-  const location = useLocation();
+export default function Layout({ children }: { children?: React.ReactNode }) {
+  const pathname = usePathname();
   const router = useRouter();
   const [profile, setProfile] = useState<DashboardProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -53,7 +53,7 @@ export default function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  const pageTitle = navItems.find((n) => location.pathname.startsWith(n.to))?.label ?? 'Smart Inspections';
+  const pageTitle = navItems.find((n) => pathname.startsWith(n.to))?.label ?? 'Smart Inspections';
 
   useEffect(() => {
     let active = true;
@@ -169,26 +169,27 @@ export default function Layout() {
         </div>
 
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
-          {navItems.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              title={!isSidebarOpen ? label : undefined}
-              onClick={() => setIsMobileSidebarOpen(false)}
-              className={({ isActive }) =>
-                `flex rounded-lg px-3 py-2.5 text-sm transition-all duration-300 ${
+          {navItems.map(({ to, label, icon: Icon }) => {
+            const isActive = pathname.startsWith(to);
+            return (
+              <Link
+                key={to}
+                href={to}
+                title={!isSidebarOpen ? label : undefined}
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className={`flex rounded-lg px-3 py-2.5 text-sm transition-all duration-300 ${
                   isSidebarOpen ? 'items-center gap-3' : 'items-center justify-center'
                 } ${
                   isActive
                     ? 'bg-navy-50 font-medium text-navy-700'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`
-              }
-            >
-              <Icon className="h-[18px] w-[18px] shrink-0" />
-              {isSidebarOpen ? <span className="truncate">{label}</span> : null}
-            </NavLink>
-          ))}
+                }`}
+              >
+                <Icon className="h-[18px] w-[18px] shrink-0" />
+                {isSidebarOpen ? <span className="truncate">{label}</span> : null}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className={`border-t border-gray-100 px-3 py-4 ${isSidebarOpen ? "" : "flex justify-center"}`}>
@@ -235,7 +236,7 @@ export default function Layout() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
-          <Outlet />
+          {children}
         </main>
       </div>
     </div>

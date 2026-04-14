@@ -1,7 +1,6 @@
 "use client";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useParams, usePathname } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
@@ -23,15 +22,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const params = useParams();
   const { sidebarCollapsed, toggleSidebar } = useAppStore();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const queryClient = useMemo(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: { staleTime: 30_000, retry: 1 },
-        },
-      }),
-    []
-  );
 
   const isInspectionDocumentRoute = pathname.startsWith("/document/483/");
   /** Workflow is rendered as normal layout children so the page always mounts (Outlet pattern skipped). */
@@ -83,7 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     content = (
       <InspectionAppProviders pathname={pathname} params={params} outlet={children}>
         <div className="inspection-app">
-          <InspectionLayout />
+          <InspectionLayout>{children}</InspectionLayout>
         </div>
       </InspectionAppProviders>
     );
@@ -120,5 +110,5 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  return <QueryClientProvider client={queryClient}>{content}</QueryClientProvider>;
+  return content;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
@@ -127,6 +127,12 @@ function formatFileSize(bytes: number): string {
 
 export default function NewInspectionPage() {
   const router = useRouter();
+
+  useEffect(() => {
+    toast.info("Use the Workflow page to create and manage inspections.");
+    router.replace("/workflow");
+  }, [router]);
+
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormData>(initialFormData);
   const [files, setFiles] = useState<UploadedFile[]>([]);

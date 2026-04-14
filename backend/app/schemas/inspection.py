@@ -46,6 +46,10 @@ class ObservationOutput(BaseModel):
     drafted_text: str
     evidence_used: list[str] = Field(default_factory=list)
     cfr_citation: str | None = None
+    evidence_grounding_types: list[str] = Field(
+        default_factory=list,
+        description="Per-item grounding type: exact_match | fuzzy_match | extracted_fallback",
+    )
 
 
 class Draft483Response(BaseModel):
@@ -131,6 +135,10 @@ class DraftObservation(BaseModel):
     review_flags: list[str] = []
     validation: ObservationValidation | None = None
     evidence_sources: list[EvidenceSourceItem] = Field(default_factory=list)
+    evidence_grounding_types: list[str] = Field(
+        default_factory=list,
+        description="Per evidence_list item: exact_match | fuzzy_match | extracted_fallback",
+    )
     cfr_reference: str = Field(
         default="",
         description="Canonical CFR string for traceability (defaults to cfr_citation)",
@@ -272,6 +280,10 @@ class GenerateObservationsResponse(BaseModel):
     pipeline_integrity: bool | None = Field(
         default=None,
         description="mapping_valid and segmentation_valid — headline KPI for demos",
+    )
+    observation_count_mismatch_warning: str | None = Field(
+        default=None,
+        description="Non-null warning string when segmented vs drafted count mismatch is detected",
     )
     metrics: GenerateObservationsRunMetrics | None = Field(
         default=None,

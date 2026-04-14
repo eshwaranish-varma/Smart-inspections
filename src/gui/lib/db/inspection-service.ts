@@ -51,6 +51,7 @@ export type InspectionRecord = {
   raw_notes: string;
   created_at: string;
   updated_at: string;
+  completed_at: string | null;
   creator_name?: string;
   assignee_name?: string;
 };
@@ -125,6 +126,19 @@ export type DocumentLibraryRecord = {
   investigator_name?: string;
   supervisor_name?: string;
 };
+
+/**
+ * Enforce role-based access to an inspection. Returns the inspection if allowed, or null.
+ * Supervisors can access any inspection. Investigators can only access inspections assigned to them.
+ */
+export function canUserAccessInspection(
+  inspection: InspectionRecord,
+  userId: string,
+  userRole: string
+): boolean {
+  if (userRole === "supervisor") return true;
+  return inspection.assigned_to === userId || inspection.created_by === userId;
+}
 
 /**
  * Workflow phases (paper spec) ↔ DB `status` values:
@@ -329,8 +343,9 @@ export async function transitionStatus(
   if (!canTransition(current.status, newStatus)) {
     throw new Error(`Cannot transition from '${current.status}' to '${newStatus}'`);
   }
+  const isTerminal = newStatus === "closed" || newStatus === "approved" || newStatus === "eir_approved";
   const result = await pool.query<InspectionRecord>(
-    `UPDATE inspections SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+    `UPDATE inspections SET status = $1, updated_at = NOW()${isTerminal ? ", completed_at = NOW()" : ""} WHERE id = $2 RETURNING *`,
     [newStatus, inspectionId]
   );
   const updated = result.rows[0];

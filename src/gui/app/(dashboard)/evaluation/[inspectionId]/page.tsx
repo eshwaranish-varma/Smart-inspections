@@ -3,19 +3,23 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 as Loader2Icon } from "lucide-react";
 import InspectionEvaluationDashboardView from "@/components/evaluation/InspectionEvaluationDashboardView";
 import { getInspectionEvaluationDashboard } from "@/lib/api";
+import { useWorkflowGuard } from "@/hooks/useWorkflowGuard";
+import { canAccessEvaluation } from "@/lib/inspection-workflow-policy";
 import type { InspectionEvaluationDashboard } from "@/types/inspection";
 
 export default function InspectionEvaluationDashboardPage() {
   const params = useParams();
   const inspectionId = params.inspectionId as string;
+  const { allowed, loading: guardLoading } = useWorkflowGuard(inspectionId, canAccessEvaluation);
   const [data, setData] = useState<InspectionEvaluationDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!allowed) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -36,6 +40,16 @@ export default function InspectionEvaluationDashboardPage() {
       cancelled = true;
     };
   }, [inspectionId]);
+
+  if (guardLoading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2Icon className="h-8 w-8 animate-spin text-navy-600" />
+      </div>
+    );
+  }
+
+  if (!allowed) return null;
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8">

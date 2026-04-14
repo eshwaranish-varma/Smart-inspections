@@ -35,12 +35,31 @@ def _structure_ok(obs: dict[str, Any]) -> bool:
 
 def _cfr_valid(obs: dict[str, Any]) -> bool:
     text = str(obs.get("cfr_citation") or "")
-    return bool(CFR_PATTERN.search(text))
+    has_pattern = bool(CFR_PATTERN.search(text))
+    score = obs.get("citation_match_score")
+    if score is not None:
+        try:
+            return has_pattern and float(score) >= 0.5
+        except (TypeError, ValueError):
+            pass
+    return has_pattern
+
+
+_NORMALIZE_RE = re.compile(r"\s+")
+
+
+def _normalize_for_match(text: str) -> str:
+    """Collapse whitespace and lowercase — tolerant of OCR noise, casing, spacing."""
+    return _NORMALIZE_RE.sub(" ", (text or "").lower().strip())
 
 
 def _evidence_item_in_source(item: str, src_lower: str) -> bool:
-    s = str(item).strip().lower()
-    return len(s) >= 3 and s in src_lower
+    s = str(item).strip()
+    if len(s) < 3:
+        return False
+    if s.lower() in src_lower:
+        return True
+    return _normalize_for_match(s) in _normalize_for_match(src_lower)
 
 
 def _grounded_any_evidence(input_text: str, obs: dict[str, Any]) -> bool:
@@ -367,6 +386,31 @@ def _evaluate_one_observation(
         "evidence_fp": fp,
         "ocr_accuracy": ocr_accuracy,
         "overall": round(overall, 4),
+    }
+
+
+def validate_observation_count(
+    input_obs: list[Any],
+    output_obs: list[Any],
+) -> dict[str, Any]:
+    """Strict 1:1 mapping check between input segmented observations and drafted outputs.
+
+    Returns a dict with status, reason, input_count, and output_count.
+    """
+    n_in = len(input_obs)
+    n_out = len(output_obs)
+    if n_in != n_out:
+        return {
+            "status": "failed",
+            "reason": f"Observation count mismatch: {n_in} input vs {n_out} output",
+            "input_count": n_in,
+            "output_count": n_out,
+        }
+    return {
+        "status": "passed",
+        "reason": "1:1 observation mapping verified",
+        "input_count": n_in,
+        "output_count": n_out,
     }
 
 

@@ -15,6 +15,8 @@ function VerifyEmailContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState("");
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
@@ -36,7 +38,32 @@ function VerifyEmailContent() {
     }
 
     setSuccess(true);
-    setTimeout(() => router.replace("/login?verified=1"), 1800);
+    const target = data.autoLogin ? "/dashboard" : "/login?verified=1";
+    setTimeout(() => router.replace(target), 1800);
+  }
+
+  async function handleResend() {
+    setResending(true);
+    setResendMsg("");
+    setError("");
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Could not resend code.");
+      } else {
+        setCode("");
+        setResendMsg("A new verification code has been sent to your email.");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setResending(false);
+    }
   }
 
   return (
@@ -94,7 +121,7 @@ function VerifyEmailContent() {
                 <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
                 <h3 style={{ color: "#0f766e", marginBottom: 8 }}>Email Verified Successfully</h3>
                 <p style={{ color: "#475569", marginBottom: 16 }}>
-                  Your account is now active. Redirecting you to the login page...
+                  Your account is now active. Signing you in and redirecting to the dashboard...
                 </p>
                 <div
                   style={{
@@ -115,11 +142,11 @@ function VerifyEmailContent() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => router.replace("/login?verified=1")}
+                  onClick={() => router.replace("/dashboard")}
                   style={{
                     width: "100%",
                     padding: 12,
-                    background: "#0D1B3E",
+                    background: "#028090",
                     color: "#fff",
                     fontWeight: "bold",
                     fontSize: 15,
@@ -128,7 +155,7 @@ function VerifyEmailContent() {
                     cursor: "pointer",
                   }}
                 >
-                  Continue to Login
+                  Go to Dashboard →
                 </button>
               </div>
             ) : (
@@ -187,9 +214,11 @@ function VerifyEmailContent() {
                     <input
                       type="text"
                       value={code}
-                      onChange={(e) =>
-                        setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-                      }
+                      onChange={(e) => {
+                        setCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                        setError("");
+                        setResendMsg("");
+                      }}
                       required
                       maxLength={6}
                       placeholder="000000"
@@ -228,7 +257,24 @@ function VerifyEmailContent() {
                   </button>
                 </form>
 
-                <p
+                {resendMsg && (
+                  <div
+                    style={{
+                      background: "#ecfdf5",
+                      border: "1px solid #a7f3d0",
+                      borderRadius: 8,
+                      padding: "12px 16px",
+                      marginTop: 16,
+                      color: "#047857",
+                      fontSize: 14,
+                      textAlign: "center",
+                    }}
+                  >
+                    {resendMsg}
+                  </div>
+                )}
+
+                <div
                   style={{
                     textAlign: "center",
                     marginTop: 16,
@@ -236,11 +282,33 @@ function VerifyEmailContent() {
                     color: "#6b7280",
                   }}
                 >
-                  Wrong email?{" "}
-                  <Link href="/signup" style={{ color: "#028090" }}>
-                    Sign up again
-                  </Link>
-                </p>
+                  <p style={{ margin: 0 }}>
+                    Didn&apos;t receive the code?{" "}
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={resending}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#028090",
+                        fontWeight: 600,
+                        cursor: resending ? "not-allowed" : "pointer",
+                        fontSize: 13,
+                        padding: 0,
+                        textDecoration: "underline",
+                      }}
+                    >
+                      {resending ? "Sending…" : "Resend verification code"}
+                    </button>
+                  </p>
+                  <p style={{ marginTop: 8 }}>
+                    Wrong email?{" "}
+                    <Link href="/signup" style={{ color: "#028090" }}>
+                      Sign up again
+                    </Link>
+                  </p>
+                </div>
               </>
             )}
           </div>

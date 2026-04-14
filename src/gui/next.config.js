@@ -22,6 +22,9 @@ const monoRoot =
 const nextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: monoRoot,
+  experimental: {
+    esmExternals: true,
+  },
   turbopack: {
     root: monoRoot,
   },
@@ -30,6 +33,7 @@ const nextConfig = {
       __dirname,
       "lib/react-router-dom-compat.tsx"
     );
+    config.resolve.alias["canvas"] = false;
     return config;
   },
 };

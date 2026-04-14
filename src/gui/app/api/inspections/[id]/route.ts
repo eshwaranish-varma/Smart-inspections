@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserFromRequest } from "@/lib/auth/get-current-user";
-import { getInspectionById } from "@/lib/db/inspection-service";
+import { getInspectionById, canUserAccessInspection } from "@/lib/db/inspection-service";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -10,6 +10,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const inspection = await getInspectionById(id);
     if (!inspection) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    if (!canUserAccessInspection(inspection, user.id, user.role)) {
+      return NextResponse.json({ error: "Access restricted — this inspection is not assigned to you." }, { status: 403 });
+    }
 
     return NextResponse.json({ inspection });
   } catch (error) {

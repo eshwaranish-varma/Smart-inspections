@@ -6,7 +6,6 @@ import {
   Briefcase,
   CalendarDays,
   Mail,
-  MapPin,
   Shield,
   User as UserIcon,
   X,
@@ -578,15 +577,6 @@ export default function ProfileModal({
                 </div>
               </section>
 
-              <section className="rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm text-slate-700">
-                <div className="flex items-start gap-2">
-                  <MapPin className="mt-0.5 h-4 w-4 text-cyan-700" />
-                  <p>
-                    <strong>Account role</strong> (Investigator / Supervisor) cannot be changed here. Other fields
-                    save through <code className="rounded bg-white/80 px-1 text-xs">PUT /api/profile</code>.
-                  </p>
-                </div>
-              </section>
             </div>
           )}
         </div>

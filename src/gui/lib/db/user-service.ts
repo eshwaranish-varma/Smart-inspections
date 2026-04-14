@@ -310,6 +310,8 @@ async function runAuthSchemaMigrations(client: PoolClient): Promise<void> {
     );
   `);
 
+  await client.query(`ALTER TABLE inspections ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP;`);
+
   /** Demo accounts: keep canonical supervisor role (login page lists these emails). */
   await client.query(
     `UPDATE users SET role = 'supervisor', updated_at = NOW()
@@ -383,7 +385,7 @@ export async function createUser(input: {
         verification_code,
         verification_expires_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, $9)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, NOW() + INTERVAL '10 minutes')
       RETURNING *
     `,
     [
@@ -395,7 +397,6 @@ export async function createUser(input: {
       input.role || "investigator",
       input.passwordHash,
       input.verificationCode,
-      input.verificationExpiresAt,
     ]
   );
 
@@ -429,23 +430,23 @@ export async function createUser(input: {
 export async function storeOtpCode(
   userId: string,
   code: string,
-  expiresAt: Date
+  _expiresAt?: Date
 ): Promise<void> {
   await ensureAuthTables();
   await pool.query(
     `
       UPDATE users
       SET verification_code = $2,
-          verification_expires_at = $3,
+          verification_expires_at = NOW() + INTERVAL '10 minutes',
           updated_at = NOW()
       WHERE id = $1
     `,
-    [userId, code, expiresAt]
+    [userId, code]
   );
 
   await pool.query(
-    `INSERT INTO email_verifications (user_id, code, expires_at, used) VALUES ($1, $2, $3, FALSE)`,
-    [userId, code, expiresAt]
+    `INSERT INTO email_verifications (user_id, code, expires_at, used) VALUES ($1, $2, NOW() + INTERVAL '10 minutes', FALSE)`,
+    [userId, code]
   );
 }
 

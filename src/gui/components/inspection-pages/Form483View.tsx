@@ -1,16 +1,18 @@
 "use client";
 
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ArrowLeft, Download, Printer, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import Form483Preview from '@/components/inspection-components/inspection/Form483Preview';
+import Form483Preview from '@/components/inspection/Form483Preview';
 import { downloadDocument, getLibraryItem } from '@/lib/api';
 import type { InspectionMetadata, DraftObservation } from '@/types/inspection';
 
 export default function Form483View() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const params = useParams();
+  const id = params.id as string | undefined;
+  const router = useRouter();
   const [downloading, setDownloading] = useState(false);
 
   const docQuery = useQuery({
@@ -70,7 +72,7 @@ export default function Form483View() {
         <h1 className="text-xl font-semibold text-gray-900">Form FDA 483 Preview</h1>
         <p className="mt-2 text-sm text-gray-600">Unable to load this document.</p>
         <button
-          onClick={() => navigate('/library')}
+          onClick={() => router.push('/library')}
           className="mt-4 inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -114,13 +116,13 @@ export default function Form483View() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/library')}
+          <Link
+            href="/library"
             className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Library
-          </button>
+          </Link>
           <button
             onClick={handleDownload}
             disabled={downloading}

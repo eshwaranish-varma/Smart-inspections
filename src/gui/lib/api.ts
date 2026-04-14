@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { apiFetch, apiFetchBlob } from '@/lib/apiClient';
 import type {
   InspectionMetadata,
   DraftObservation,
@@ -23,48 +23,38 @@ import type {
 } from '@/types/inspection';
 
 const configuredBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() || '';
-const normalizedBaseUrl = configuredBaseUrl
+const BASE = configuredBaseUrl
   ? configuredBaseUrl.replace(/\/$/, '').endsWith('/api')
     ? configuredBaseUrl.replace(/\/$/, '')
     : `${configuredBaseUrl.replace(/\/$/, '')}/api`
-  : 'http://localhost:8000/api';
+  : '/api';
 
-const api = axios.create({
-  baseURL: normalizedBaseUrl,
-});
-
-api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    const msg =
-      err.response?.data?.detail ??
-      err.response?.data?.error ??
-      err.message ??
-      'Request failed';
-    console.warn('API Error:', msg);
-    return Promise.reject(err);
-  }
-);
+function qs(params: Record<string, string | number | undefined | null>): string {
+  const parts = Object.entries(params)
+    .filter(([, v]) => v != null && v !== '')
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+  return parts.length ? `?${parts.join('&')}` : '';
+}
 
 export const getObservations = (params: { q?: string; page?: number; per_page?: number; establishment_type?: string }) =>
-  api.get<PaginatedResponse<Record<string, string>>>('/observations', { params }).then(r => r.data);
+  apiFetch<PaginatedResponse<Record<string, string>>>(`${BASE}/observations${qs(params)}`);
 
 export const getObservationStats = () =>
-  api.get<ObservationStats>('/observations/stats').then(r => r.data);
+  apiFetch<ObservationStats>(`${BASE}/observations/stats`);
 
 export const searchObservations = (q: string) =>
-  api.get<Record<string, string>[]>('/observations/search', { params: { q } }).then(r => r.data);
+  apiFetch<Record<string, string>[]>(`${BASE}/observations/search${qs({ q })}`);
 
 export const addObservation = (data: Record<string, string>) =>
-  api.post('/observations', data).then(r => r.data);
+  apiFetch(`${BASE}/observations`, { method: 'POST', body: JSON.stringify(data) });
 
-export const exportObservations = (q: string = '') =>
-  api.get('/observations/export', { params: { q }, responseType: 'blob' }).then(r => {
-    const url = URL.createObjectURL(r.data);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'observations_export.xlsx'; a.click();
-    URL.revokeObjectURL(url);
-  });
+export const exportObservations = async (q: string = '') => {
+  const blob = await apiFetchBlob(`${BASE}/observations/export${qs({ q })}`);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'observations_export.xlsx'; a.click();
+  URL.revokeObjectURL(url);
+};
 
 export const generateObservations = (data: {
   raw_notes: string;
@@ -75,107 +65,115 @@ export const generateObservations = (data: {
   inspection_id?: string | null;
   inspection_title?: string | null;
   skip_observation_count_estimate?: boolean;
-  /** Prior QA / evaluation flags appended to the draft prompt (second pass, same raw notes). */
   refinement_feedback?: string | null;
 }) =>
-  api.post<GenerateObservationsResponse>('/ai/generate-observations', data).then(r => r.data);
+  apiFetch<GenerateObservationsResponse>(`${BASE}/ai/generate-observations`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 
 export const getEvalMetrics = () =>
-  api.get<AggregateEvalMetrics>('/eval/metrics').then(r => r.data);
+  apiFetch<AggregateEvalMetrics>(`${BASE}/eval/metrics`);
 
 export const getEvalDocument = (docId: string) =>
-  api.get<EvaluationDocumentResponse>(`/eval/documents/${encodeURIComponent(docId)}`).then(r => r.data);
+  apiFetch<EvaluationDocumentResponse>(`${BASE}/eval/documents/${encodeURIComponent(docId)}`);
 
 export const listEvalDocuments = (params?: { title?: string; inspection_id?: string; limit?: number }) => {
-  const p: Record<string, string | number> = { limit: params?.limit ?? 100 };
+  const p: Record<string, string | number | undefined> = { limit: params?.limit ?? 100 };
   if (params?.title?.trim()) p.title = params.title.trim();
   if (params?.inspection_id?.trim()) p.inspection_id = params.inspection_id.trim();
-  return api.get<EvaluationSummary[]>('/eval/documents', { params: p }).then(r => r.data);
+  return apiFetch<EvaluationSummary[]>(`${BASE}/eval/documents${qs(p)}`);
 };
 
 export const getInspectionEvaluationDashboard = (inspectionId: string) =>
-  api
-    .get<InspectionEvaluationDashboard>(`/evaluation/${encodeURIComponent(inspectionId)}`)
-    .then((r) => r.data);
+  apiFetch<InspectionEvaluationDashboard>(`${BASE}/evaluation/${encodeURIComponent(inspectionId)}`);
 
 export const getPipelineDashboardSummary = () =>
-  api.get<PipelineDashboardSummary>('/evaluation/pipeline/dashboard/summary').then((r) => r.data);
+  apiFetch<PipelineDashboardSummary>(`${BASE}/evaluation/pipeline/dashboard/summary`);
 
 export const listPipelineRuns = (params?: { limit?: number; offset?: number; run_type?: string }) =>
-  api
-    .get<PipelineRunListResponse>('/evaluation/pipeline/runs', { params: params ?? {} })
-    .then((r) => r.data);
+  apiFetch<PipelineRunListResponse>(`${BASE}/evaluation/pipeline/runs${qs(params ?? {})}`);
 
 export const getPipelineRunDetail = (runId: string) =>
-  api
-    .get<PipelineRunDetailResponse>(`/evaluation/pipeline/runs/${encodeURIComponent(runId)}`)
-    .then((r) => r.data);
+  apiFetch<PipelineRunDetailResponse>(`${BASE}/evaluation/pipeline/runs/${encodeURIComponent(runId)}`);
 
 export const getPipelineObservationExplain = (runId: string, observationIndex: number) =>
-  api
-    .get<ObservationExplainabilityResponse>(
-      `/evaluation/pipeline/runs/${encodeURIComponent(runId)}/observations/${observationIndex}`,
-    )
-    .then((r) => r.data);
+  apiFetch<ObservationExplainabilityResponse>(
+    `${BASE}/evaluation/pipeline/runs/${encodeURIComponent(runId)}/observations/${observationIndex}`,
+  );
 
 export const generateEIR = (data: { observations: DraftObservation[]; inspection_metadata: InspectionMetadata; raw_notes?: string }) =>
-  api.post<EIRNarrative>('/ai/generate-eir', data).then(r => r.data);
+  apiFetch<EIRNarrative>(`${BASE}/ai/generate-eir`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 
 export const refineObservation = (data: { observation: DraftObservation; user_feedback: string }) =>
-  api.post<DraftObservation>('/ai/refine-observation', data).then(r => r.data);
+  apiFetch<DraftObservation>(`${BASE}/ai/refine-observation`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 
 export const validateObservation = (obs: DraftObservation) =>
-  api.post<ValidationResult>('/ai/validate-observation', obs).then(r => r.data);
+  apiFetch<ValidationResult>(`${BASE}/ai/validate-observation`, {
+    method: 'POST',
+    body: JSON.stringify(obs),
+  });
 
 export const processOCR = (file: File, isHandwritten: boolean = false) => {
   const fd = new FormData();
   fd.append('file', file);
   fd.append('is_handwritten', String(isHandwritten));
-  return api.post<OCRResult>('/ocr', fd).then(r => r.data);
+  return apiFetch<OCRResult>(`${BASE}/ocr`, {
+    method: 'POST',
+    body: fd,
+    headers: {},
+  });
 };
 
 export const extractInspectionMetadata = (data: { raw_text: string }) =>
-  api.post<ExtractMetadataResponse>('/ai/extract-metadata', data).then(r => r.data);
+  apiFetch<ExtractMetadataResponse>(`${BASE}/ai/extract-metadata`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 
-export const downloadDocument = (
+export const downloadDocument = async (
   type: '483' | 'eir' | 'both',
   data: {
     form_data: InspectionMetadata;
     observations: DraftObservation[];
     raw_notes?: string;
-    /** When set, backend skips LLM and renders this EIR (library / saved package replay). */
     eir_narrative?: EIRNarrative | EIRPipelineNarrative;
   },
 ) => {
   const endpoint = type === '483' ? '/documents/generate-483' : type === 'eir' ? '/documents/generate-eir' : '/documents/generate-both';
   const name = type === 'both' ? 'FDA_Documents.zip' : type === '483' ? 'FDA_483.docx' : 'EIR_Narrative.docx';
-  return api.post(endpoint, data, { responseType: 'blob' }).then(r => {
-    const url = URL.createObjectURL(r.data);
-    const a = document.createElement('a');
-    a.href = url; a.download = name; a.click();
-    URL.revokeObjectURL(url);
+  const blob = await apiFetchBlob(`${BASE}${endpoint}`, {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
 };
 
 export const getLibrary = () =>
-  api.get<DocumentLibraryItem[]>('/library').then(r => r.data);
+  apiFetch<DocumentLibraryItem[]>(`${BASE}/library`);
 
 export const saveToLibrary = (data: Record<string, unknown>) =>
-  api.post('/library', data).then(r => r.data);
+  apiFetch(`${BASE}/library`, { method: 'POST', body: JSON.stringify(data) });
 
 export const getLibraryItem = (id: number) =>
-  api.get(`/library/${id}`).then(r => r.data);
+  apiFetch(`${BASE}/library/${id}`);
 
 export const deleteLibraryItem = (id: number) =>
-  api.delete(`/library/${id}`).then(r => r.data);
+  apiFetch(`${BASE}/library/${id}`, { method: 'DELETE' });
 
 export const getHealth = () =>
-  api.get('/health').then(r => r.data);
+  apiFetch(`${BASE}/health`);
 
 export const getTopRegulations = (limit: number = 10) =>
-  api.get<{ items: TopRegulationItem[] }>('/references/top-regulations', { params: { limit } }).then(r => r.data.items);
+  apiFetch<{ items: TopRegulationItem[] }>(`${BASE}/references/top-regulations${qs({ limit })}`).then(r => r.items);
 
-// Preserve legacy Next.js inspection creation flow during migration.
 export const createInspection = async <T>(inspection: T) => inspection;
-
-export default api;

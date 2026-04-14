@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import axios from 'axios';
+import { apiFetch } from '@/lib/apiClient';
 import Link from 'next/link';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useDropzone } from 'react-dropzone';
@@ -49,8 +49,8 @@ import {
   extractInspectionMetadata,
   addObservation,
 } from '@/lib/api';
-import Form483Preview from '@/components/inspection-components/inspection/Form483Preview';
-import EIRPreview from '@/components/inspection-components/inspection/EIRPreview';
+import Form483Preview from '@/components/inspection/Form483Preview';
+import EIRPreview from '@/components/inspection/EIRPreview';
 import { are483ObservationsLockedFromStatus } from '@/lib/inspection-workflow-policy';
 
 const ESTABLISHMENT_TYPES = [
@@ -529,11 +529,8 @@ export default function NewInspection({
       toast.success('Metadata auto-filled from uploaded file');
     } catch (e) {
       let message = 'Could not auto-fill metadata from this file';
-      if (axios.isAxiosError(e)) {
-        const d = e.response?.data?.detail;
-        if (typeof d === 'string') message = d;
-        else if (d != null) message = JSON.stringify(d);
-        else if (e.message) message = e.message;
+      if (e instanceof Error && e.message) {
+        message = e.message;
       }
       toast.error(message);
     } finally {
@@ -597,6 +594,15 @@ export default function NewInspection({
             version_comments: 'AI-generated draft observations updated',
           }),
         });
+      }
+      if (resp.observation_count_mismatch_warning) {
+        toast.warning(resp.observation_count_mismatch_warning, { duration: 8000 });
+      }
+      if (resp.pipeline_integrity === false) {
+        toast.error(
+          'Pipeline integrity check failed — review observations carefully before publishing.',
+          { duration: 8000 },
+        );
       }
       toast.success(`Generated ${resp.observations.length} draft observations`, {
         action: {

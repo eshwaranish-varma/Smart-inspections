@@ -255,6 +255,11 @@ export default function EvaluationPanel({ scores, loading, className = "" }: Pro
                   Segmentation heuristic: no merge signal from raw text vs. segment count.
                 </p>
               ) : null}
+              {scores.observation_count_mismatch ? (
+                <p className="mt-2 text-xs font-bold text-red-700 dark:text-red-300">
+                  ⚠️ Observation count mismatch detected — AI output split observations incorrectly. Review before publishing.
+                </p>
+              ) : null}
               {scores.grounding_f1_micro != null ? (
                 <div className="mt-3 rounded-lg border border-slate-100 bg-white/90 p-3 text-xs dark:border-white/10 dark:bg-slate-800/60">
                   <p className="font-semibold text-slate-800 dark:text-white">Run-level grounding (micro)</p>

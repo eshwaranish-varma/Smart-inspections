@@ -216,8 +216,13 @@ def build_inspection_evaluation_response(inspection_id: str) -> dict[str, Any]:
     tpl_list: list[int] = []
     hall_flags: list[str] = []
     overalls: list[int] = []
+    grounding_precisions: list[float] = []
+    grounding_recalls: list[float] = []
+    grounding_f1s: list[float] = []
+    confidences: list[float] = []
+    total_obs_count: int = 0
+    total_chunk_count: int = 0
 
-    # Newest last — give more weight to last 3
     for rec in records:
         doc_id = str(rec.get("doc_id") or "")
         if not doc_id:
@@ -230,6 +235,36 @@ def build_inspection_evaluation_response(inspection_id: str) -> dict[str, Any]:
         scores = rec.get("scores") or {}
         ov = _overall_from_scores(scores) if scores else int(round(0.25 * (ocr + cfr + ev + tpl)))
 
+        gp = scores.get("grounding_precision_micro")
+        gr = scores.get("grounding_recall_micro")
+        gf = scores.get("grounding_f1_micro")
+        if gp is not None:
+            grounding_precisions.append(float(gp))
+        if gr is not None:
+            grounding_recalls.append(float(gr))
+        if gf is not None:
+            grounding_f1s.append(float(gf))
+
+        obs_scores_list = scores.get("observations")
+        if isinstance(obs_scores_list, list):
+            total_obs_count += len(obs_scores_list)
+            for obs_s in obs_scores_list:
+                if isinstance(obs_s, dict) and obs_s.get("confidence") is not None:
+                    try:
+                        confidences.append(float(obs_s["confidence"]))
+                    except (TypeError, ValueError):
+                        pass
+
+        ai_out = rec.get("output") or {}
+        if isinstance(ai_out, dict):
+            draft_obs = ai_out.get("observations")
+            if isinstance(draft_obs, list):
+                for d_obs in draft_obs:
+                    if isinstance(d_obs, dict):
+                        ev_src = d_obs.get("evidence_sources")
+                        if isinstance(ev_src, list):
+                            total_chunk_count += len(ev_src)
+
         per_doc.append(
             {
                 "document_id": doc_id,
@@ -241,6 +276,9 @@ def build_inspection_evaluation_response(inspection_id: str) -> dict[str, Any]:
                 "hallucination_safety_score": risk,
                 "template_score": tpl,
                 "overall_score": ov,
+                "grounding_precision": _scale_0_100(gp) if gp is not None else None,
+                "grounding_recall": _scale_0_100(gr) if gr is not None else None,
+                "grounding_f1": _scale_0_100(gf) if gf is not None else None,
                 "explanations": {
                     "ocr_accuracy": ocr_ex,
                     "cfr_match_score": cfr_ex,
@@ -269,6 +307,9 @@ def build_inspection_evaluation_response(inspection_id: str) -> dict[str, Any]:
     latest_id = str(latest.get("doc_id") or "")
     hf, _ = detect_hallucinations(latest_id) if latest_id else ([], 0)
 
+    def avg_f(vals: list[float]) -> float | None:
+        return round(sum(vals) / len(vals), 4) if vals else None
+
     return {
         "inspection_id": inspection_id,
         "ocr_accuracy": avg(ocr_list),
@@ -284,6 +325,12 @@ def build_inspection_evaluation_response(inspection_id: str) -> dict[str, Any]:
             "evidence_coverage": "Aggregated grounding F1 / recall signals.",
             "template_compliance": "Aggregated 483 structural completeness checks.",
         },
+        "grounding_precision": _scale_0_100(avg_f(grounding_precisions)) if grounding_precisions else None,
+        "grounding_recall": _scale_0_100(avg_f(grounding_recalls)) if grounding_recalls else None,
+        "grounding_f1": _scale_0_100(avg_f(grounding_f1s)) if grounding_f1s else None,
+        "avg_confidence": _scale_0_100(avg_f(confidences)) if confidences else None,
+        "total_chunks": total_chunk_count,
+        "observation_count": total_obs_count,
     }
 
 

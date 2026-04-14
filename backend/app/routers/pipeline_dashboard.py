@@ -161,7 +161,7 @@ def list_pipeline_runs(
             PipelineRunListItem(
                 id=r.id,
                 run_type=r.run_type,
-                inspection_id=r.inspection_id,
+                inspection_id=str(r.inspection_id) if r.inspection_id else None,
                 status=r.status,
                 created_at=r.created_at,
                 completed_at=r.completed_at,

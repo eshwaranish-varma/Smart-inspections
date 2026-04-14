@@ -20,4 +20,10 @@ async def get_inspection_evaluation_dashboard(inspection_id: str):
         "inspection_id": data["inspection_id"],
         "per_document": data.get("per_document", []),
         "explanations": data.get("explanations", {}),
+        "grounding_precision": data.get("grounding_precision"),
+        "grounding_recall": data.get("grounding_recall"),
+        "grounding_f1": data.get("grounding_f1"),
+        "avg_confidence": data.get("avg_confidence"),
+        "total_chunks": data.get("total_chunks"),
+        "observation_count": data.get("observation_count"),
     }

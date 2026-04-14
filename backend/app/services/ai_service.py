@@ -1180,6 +1180,25 @@ Return the improved observation text only (no JSON, no explanation)."""),
         else:
             evidence_used = []
 
+        source_text = obs.raw_text or ""
+        if obs.evidence:
+            source_text += " " + " ".join(obs.evidence)
+        if obs.retrieval_context:
+            source_text += " " + obs.retrieval_context
+
+        grounding_types: list[str] = []
+        try:
+            from app.services.evidence_postprocess import fix_evidence_list
+            evidence_used, grounding_types = fix_evidence_list(
+                evidence_used, source_text, max_items=5,
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                "fix_evidence_list failed for obs %s (using original evidence): %s",
+                obs.obs_id, e,
+            )
+
         cc = parsed.get("cfr_citation")
         cfr_citation: str | None
         if cc is None or (isinstance(cc, str) and not cc.strip()):
@@ -1192,6 +1211,7 @@ Return the improved observation text only (no JSON, no explanation)."""),
             drafted_text=drafted_text,
             evidence_used=evidence_used,
             cfr_citation=cfr_citation,
+            evidence_grounding_types=grounding_types,
         )
 
     async def draft_observations(self, observations: list[ObservationInput]) -> list[ObservationOutput]:

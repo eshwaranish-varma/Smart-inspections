@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { useWorkflowGuard } from "@/hooks/useWorkflowGuard";
+import { canAccessEvaluation } from "@/lib/inspection-workflow-policy";
+import ObservationExplainabilityPanel from "@/components/inspection/ObservationExplainabilityPanel";
 import type { DraftObservation } from "@/types/inspection";
 
 function confidencePct(obs: DraftObservation): number {
@@ -25,11 +28,14 @@ function evidenceBadge(obs: DraftObservation) {
 export default function WorkflowAiReviewPage() {
   const params = useParams();
   const id = params.id as string;
+  const { allowed, loading: guardLoading } = useWorkflowGuard(id, canAccessEvaluation);
   const [observations, setObservations] = useState<DraftObservation[]>([]);
+  const [pipelineRunId, setPipelineRunId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<number | null>(0);
 
   useEffect(() => {
+    if (!allowed) return;
     let cancelled = false;
     setLoading(true);
     fetch(`/api/inspections/${id}`, { credentials: "include" })
@@ -43,6 +49,12 @@ export default function WorkflowAiReviewPage() {
           obs = [];
         }
         setObservations(obs);
+        try {
+          const meta = JSON.parse(d.inspection?.metadata_json || "{}");
+          setPipelineRunId(meta.pipeline_run_id ?? meta.last_pipeline_run_id ?? null);
+        } catch {
+          setPipelineRunId(null);
+        }
       })
       .catch(() => {
         if (!cancelled) setObservations([]);
@@ -53,7 +65,7 @@ export default function WorkflowAiReviewPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, allowed]);
 
   const selectedObs = selected != null ? observations[selected] : null;
 
@@ -72,13 +84,15 @@ export default function WorkflowAiReviewPage() {
     };
   }, [selectedObs]);
 
-  if (loading) {
+  if (guardLoading || loading) {
     return (
       <div className="flex h-96 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-navy-600" />
       </div>
     );
   }
+
+  if (!allowed) return null;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
@@ -205,6 +219,12 @@ export default function WorkflowAiReviewPage() {
                   </ul>
                 </div>
               )}
+
+              <ObservationExplainabilityPanel
+                pipelineRunId={pipelineRunId}
+                observationIndex={selected ?? 0}
+                observation={selectedObs}
+              />
             </div>
           )}
         </div>

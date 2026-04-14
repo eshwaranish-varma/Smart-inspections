@@ -32,8 +32,8 @@ import {
   UserPlus,
   Sparkles,
 } from 'lucide-react';
-import Form483Preview from '@/components/inspection-components/inspection/Form483Preview';
-import EIRPreview from '@/components/inspection-components/inspection/EIRPreview';
+import Form483Preview from '@/components/inspection/Form483Preview';
+import EIRPreview from '@/components/inspection/EIRPreview';
 import SignatureCapture from '@/components/workflow/SignatureCapture';
 import { downloadDocument } from '@/lib/api';
 import { dashboardPublishStatsQueryKey } from '@/lib/dashboard-publish-stats';
@@ -228,6 +228,7 @@ export default function InspectionDetailPage() {
   const [investigators, setInvestigators] = useState<{ id: string; first_name: string; last_name: string; email: string }[]>([]);
   const [assignToId, setAssignToId] = useState('');
   const [pipelineEirLoading, setPipelineEirLoading] = useState(false);
+  const [companyHistory, setCompanyHistory] = useState<{ inspection_id: string; title: string; investigator_name: string | null; year: string; status: string }[]>([]);
 
   const isSupervisor = profile?.role === 'supervisor';
 
@@ -242,7 +243,13 @@ export default function InspectionDetailPage() {
         fetch('/api/profile/signature', { credentials: 'include' }),
       ]);
       if (profRes.ok) setProfile((await profRes.json()).profile);
-      if (inspRes.ok) setInspection((await inspRes.json()).inspection);
+      if (inspRes.ok) {
+        setInspection((await inspRes.json()).inspection);
+      } else if (inspRes.status === 403) {
+        toast.error('Access restricted — this inspection is not assigned to you.');
+        router.replace('/workflow');
+        return;
+      }
       if (tlRes.ok) setTimeline((await tlRes.json()).logs || []);
       if (commentsRes.ok) setComments((await commentsRes.json()).comments || []);
       if (versionsRes.ok) setVersions((await versionsRes.json()).versions || []);
@@ -255,6 +262,14 @@ export default function InspectionDetailPage() {
   }, [id]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    if (!inspection?.firm_name || !isSupervisor) return;
+    fetch(`/api/inspections/history?company_name=${encodeURIComponent(inspection.firm_name)}`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : { history: [] })
+      .then(data => setCompanyHistory((data.history || []).filter((h: { inspection_id: string }) => h.inspection_id !== id)))
+      .catch(() => setCompanyHistory([]));
+  }, [inspection?.firm_name, isSupervisor, id]);
 
   useEffect(() => {
     approvedVersionAutoSelectedRef.current = null;
@@ -1219,6 +1234,44 @@ export default function InspectionDetailPage() {
               </div>
             )}
           </div>
+
+          {isSupervisor && companyHistory.length > 0 && (
+            <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <h3 className="mb-4 text-sm font-semibold text-gray-700">Company Inspection History — {inspection?.firm_name}</h3>
+              <div className="overflow-hidden rounded-lg border border-gray-100">
+                <table className="min-w-full divide-y divide-gray-100 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Year</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Title</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Investigator</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {companyHistory.map(h => (
+                      <tr key={h.inspection_id} className="hover:bg-gray-50">
+                        <td className="px-3 py-2 text-gray-600">{h.year}</td>
+                        <td className="px-3 py-2">
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/workflow/${h.inspection_id}`)}
+                            className="text-navy-700 font-medium hover:underline"
+                          >{h.title}</button>
+                        </td>
+                        <td className="px-3 py-2 text-gray-600">{h.investigator_name || '—'}</td>
+                        <td className="px-3 py-2">
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${(STATUS_CONFIG[h.status] || STATUS_CONFIG.created).color} ${(STATUS_CONFIG[h.status] || STATUS_CONFIG.created).bg}`}>
+                            {(STATUS_CONFIG[h.status] || STATUS_CONFIG.created).label}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h3 className="mb-4 text-sm font-semibold text-gray-700">Signature Readiness</h3>

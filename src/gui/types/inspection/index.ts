@@ -51,6 +51,7 @@ export interface DraftObservation {
   citation_chapter_label?: string;
   citation_subchapter_label?: string;
   evidence_list: string[];
+  evidence_grounding_types?: ("exact_match" | "fuzzy_match" | "extracted_fallback")[];
   /** Model confidence; API may return 0–1 or 0–100 depending on path — normalize in UI when displaying %. */
   confidence_score: number;
   /** Pipeline confidence (weighted mapping / evidence / structure / CFR); same scale as confidence_score on generate path. */
@@ -182,6 +183,7 @@ export interface GenerateObservationsResponse {
   /** Same distribution as metrics.summary — headline pass/warning/failed counts. */
   summary?: PipelineStatusSummary | null;
   pipeline_integrity?: boolean | null;
+  observation_count_mismatch_warning?: string | null;
   metrics?: GenerateObservationsRunMetrics | null;
 }
 
@@ -194,6 +196,12 @@ export interface InspectionEvaluationDashboard {
   template_score: number;
   overall_score: number;
   inspection_id: string;
+  grounding_precision?: number | null;
+  grounding_recall?: number | null;
+  grounding_f1?: number | null;
+  avg_confidence?: number | null;
+  total_chunks?: number | null;
+  observation_count?: number | null;
   per_document: Array<{
     document_id: string;
     created_at?: string | null;
@@ -204,6 +212,9 @@ export interface InspectionEvaluationDashboard {
     hallucination_safety_score?: number;
     template_score: number;
     overall_score: number;
+    grounding_precision?: number | null;
+    grounding_recall?: number | null;
+    grounding_f1?: number | null;
     explanations?: Record<string, string>;
   }>;
   explanations?: Record<string, string>;

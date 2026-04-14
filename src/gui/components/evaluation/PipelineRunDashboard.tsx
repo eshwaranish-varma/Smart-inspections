@@ -89,6 +89,7 @@ export default function PipelineRunDashboard({ data, className = "" }: Props) {
   const segWarning = data.segmentation_warning ?? data.evaluation?.segmentation_warning;
   const segNote = data.segmentation_note ?? data.evaluation?.segmentation_note;
   const pipelineIntegrity = data.pipeline_integrity ?? data.evaluation?.pipeline_integrity;
+  const countMismatchWarning = data.observation_count_mismatch_warning ?? null;
 
   const chartData = useMemo(() => {
     if (!summary) return [];
@@ -227,6 +228,20 @@ export default function PipelineRunDashboard({ data, className = "" }: Props) {
             {segNote}
           </p>
         ) : null}
+        {countMismatchWarning ? (
+          <>
+            <FlagRow
+              label="Observation count mismatch"
+              value="DETECTED"
+              warn
+            />
+            <p className="rounded-lg border border-red-200 bg-red-50/80 px-3 py-2 text-sm text-red-950 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-100">
+              ⚠️ {countMismatchWarning}
+            </p>
+          </>
+        ) : (
+          <FlagRow label="Observation count mismatch" value="None" />
+        )}
       </div>
 
       {/* OBSERVATION TABLE */}

@@ -69,7 +69,6 @@ export function canAccessDraftWorkspace(
   const st = (inspection.status || "").trim();
   if (phase === "483") {
     if (STATUSES_ALLOW_GENERATE_483.has(st)) return { ok: true };
-    // Read-only / review workspace after submit (FDA sequenced 483 review, rework, etc.)
     const allow483Review = new Set(["draft_completed", "rework_required"]);
     if (allow483Review.has(st)) return { ok: true };
     return {
@@ -92,4 +91,82 @@ export function canAccessDraftWorkspace(
     ok: false,
     reason: "EIR drafting opens after the 483 draft is submitted and the workflow advances to EIR phases.",
   };
+}
+
+// ---------------------------------------------------------------------------
+// eNSpect workflow guards — enforce that certain pages are only accessible
+// when the inspection has reached the appropriate status.
+// ---------------------------------------------------------------------------
+
+const STATUSES_ALLOW_EIR_VIEW = new Set([
+  "eir_assigned",
+  "eir_drafting",
+  "eir_submitted",
+  "under_review",
+  "rework_required",
+  "eir_approved",
+  "approved",
+  "closed",
+]);
+
+const STATUSES_ALLOW_EVALUATION = new Set([
+  "draft_completed",
+  "approved_483",
+  "sent_to_firm",
+  "eir_assigned",
+  "eir_drafting",
+  "eir_submitted",
+  "under_review",
+  "rework_required",
+  "eir_approved",
+  "approved",
+  "closed",
+]);
+
+const STATUSES_ALLOW_PUBLISH = new Set([
+  "eir_approved",
+  "approved",
+  "closed",
+]);
+
+export function canAccessEirDocument(
+  status: string | null | undefined
+): { ok: boolean; reason?: string; redirectTo?: string } {
+  const st = (status || "").trim();
+  if (!st || !STATUSES_ALLOW_EIR_VIEW.has(st)) {
+    return {
+      ok: false,
+      reason: "EIR documents are available after the 483 is approved and EIR drafting begins.",
+      redirectTo: "/workflow",
+    };
+  }
+  return { ok: true };
+}
+
+export function canAccessEvaluation(
+  status: string | null | undefined
+): { ok: boolean; reason?: string; redirectTo?: string } {
+  const st = (status || "").trim();
+  if (!st || !STATUSES_ALLOW_EVALUATION.has(st)) {
+    return {
+      ok: false,
+      reason: "Evaluation is available after the draft is completed. Complete the 483 draft first.",
+      redirectTo: "/workflow",
+    };
+  }
+  return { ok: true };
+}
+
+export function canAccessPublish(
+  status: string | null | undefined
+): { ok: boolean; reason?: string; redirectTo?: string } {
+  const st = (status || "").trim();
+  if (!st || !STATUSES_ALLOW_PUBLISH.has(st)) {
+    return {
+      ok: false,
+      reason: "Publishing is available only after final approval. Complete the review workflow first.",
+      redirectTo: "/workflow",
+    };
+  }
+  return { ok: true };
 }

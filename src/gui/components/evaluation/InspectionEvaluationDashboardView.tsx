@@ -31,7 +31,7 @@ export default function InspectionEvaluationDashboardView({ inspectionId, data, 
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <MetricCard title="OCR accuracy" value={data.ocr_accuracy} subtitle="Alignment vs source / ground truth" />
-            <MetricCard title="CFR match" value={data.cfr_match_score} subtitle="Title 21 citation verification" />
+            <MetricCard title="CFR match %" value={data.cfr_match_score} subtitle="Title 21 citation verification" />
             <MetricCard
               title="Evidence coverage"
               value={data.evidence_coverage}
@@ -44,6 +44,40 @@ export default function InspectionEvaluationDashboardView({ inspectionId, data, 
               <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">Weighted across linked AI evaluation runs</p>
             </div>
           </div>
+
+          {/* Enhanced grounding + confidence metrics */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {data.grounding_precision != null && (
+              <MetricCard title="Grounding precision" value={data.grounding_precision} subtitle="Evidence bullets verified in source" />
+            )}
+            {data.grounding_recall != null && (
+              <MetricCard title="Grounding recall" value={data.grounding_recall} subtitle="Observations with ≥1 evidence match" />
+            )}
+            {data.grounding_f1 != null && (
+              <MetricCard title="Grounding F1" value={data.grounding_f1} subtitle="Harmonic mean of precision × recall" />
+            )}
+            {data.avg_confidence != null && (
+              <MetricCard title="Avg confidence" value={data.avg_confidence} subtitle="Pipeline confidence per observation" />
+            )}
+          </div>
+
+          {(data.observation_count != null || data.total_chunks != null) && (
+            <div className="flex flex-wrap gap-4">
+              {data.observation_count != null && data.observation_count > 0 && (
+                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900/50">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Observations evaluated</p>
+                  <p className="mt-2 text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{data.observation_count}</p>
+                </div>
+              )}
+              {data.total_chunks != null && data.total_chunks > 0 && (
+                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900/50">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Retrieval chunks</p>
+                  <p className="mt-2 text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{data.total_chunks}</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Source evidence fragments linked</p>
+                </div>
+              )}
+            </div>
+          )}
 
           <details className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700 dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-300">
             <summary className="cursor-pointer font-semibold text-slate-900 dark:text-white">
@@ -121,25 +155,47 @@ export default function InspectionEvaluationDashboardView({ inspectionId, data, 
                     <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-5">
                       <div>
                         <p className="text-[10px] uppercase text-slate-500">OCR</p>
-                        <p className="font-semibold">{row.ocr_accuracy}</p>
+                        <p className="font-semibold">{row.ocr_accuracy}%</p>
                       </div>
                       <div>
                         <p className="text-[10px] uppercase text-slate-500">CFR</p>
-                        <p className="font-semibold">{row.cfr_match_score}</p>
+                        <p className="font-semibold">{row.cfr_match_score}%</p>
                       </div>
                       <div>
                         <p className="text-[10px] uppercase text-slate-500">Evidence</p>
-                        <p className="font-semibold">{row.evidence_coverage}</p>
+                        <p className="font-semibold">{row.evidence_coverage}%</p>
                       </div>
                       <div>
                         <p className="text-[10px] uppercase text-slate-500">Template</p>
-                        <p className="font-semibold">{row.template_score}</p>
+                        <p className="font-semibold">{row.template_score}%</p>
                       </div>
                       <div>
                         <p className="text-[10px] uppercase text-slate-500">Overall</p>
-                        <p className="font-semibold text-navy-700 dark:text-cyan-300">{row.overall_score}</p>
+                        <p className="font-semibold text-navy-700 dark:text-cyan-300">{row.overall_score}%</p>
                       </div>
                     </div>
+                    {(row.grounding_precision != null || row.grounding_recall != null || row.grounding_f1 != null) && (
+                      <div className="mt-2 grid grid-cols-3 gap-2">
+                        {row.grounding_precision != null && (
+                          <div>
+                            <p className="text-[10px] uppercase text-slate-500">Precision</p>
+                            <p className="text-xs font-semibold">{row.grounding_precision}%</p>
+                          </div>
+                        )}
+                        {row.grounding_recall != null && (
+                          <div>
+                            <p className="text-[10px] uppercase text-slate-500">Recall</p>
+                            <p className="text-xs font-semibold">{row.grounding_recall}%</p>
+                          </div>
+                        )}
+                        {row.grounding_f1 != null && (
+                          <div>
+                            <p className="text-[10px] uppercase text-slate-500">F1</p>
+                            <p className="text-xs font-semibold">{row.grounding_f1}%</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -12,9 +12,8 @@ export async function GET(req: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const status = req.nextUrl.searchParams.get("status") || undefined;
-    const view = req.nextUrl.searchParams.get("view");
 
-    if (user.role === "supervisor" || view === "all") {
+    if (user.role === "supervisor") {
       const inspections = await getAllInspections(status);
       return NextResponse.json({ inspections });
     }
