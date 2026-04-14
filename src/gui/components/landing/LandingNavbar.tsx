@@ -13,13 +13,6 @@ const navLinks = [
   { href: "#contact", label: "Contact" },
 ];
 
-const utilityLinks = [
-  { href: "#workflow", label: "Help" },
-  { href: "#architecture", label: "Documentation" },
-  { href: "#contact", label: "Contact" },
-  { href: "#", label: "English" },
-];
-
 export default function LandingNavbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -35,142 +28,101 @@ export default function LandingNavbar() {
   }, []);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50">
-      <div className="border-b border-white/10 bg-[#0B1F3A] text-[11px] text-slate-200">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2 sm:px-6 lg:px-8">
-          <p className="truncate text-slate-300">
-            AI-assisted inspection drafting platform
-          </p>
-          <div className="hidden items-center gap-4 text-slate-300 sm:flex">
-            {utilityLinks.map((link) => (
-              <Link
-                key={link.label}
-                href={link.href}
-                className="transition-colors hover:text-white"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-
+    <header className="fixed inset-x-0 top-0 z-50 flex justify-center pt-4 px-4">
       <nav
         className={[
-          "border-b transition-all duration-200",
+          "flex w-full max-w-5xl items-center justify-between gap-6 rounded-full px-4 py-2.5 transition-all duration-300",
           scrolled
-            ? "border-[#D9E1EC] bg-white/92 shadow-[0_10px_30px_rgba(11,31,58,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/92"
-            : "border-transparent bg-transparent backdrop-blur-none",
+            ? "bg-white/90 shadow-[0_8px_32px_rgba(11,31,58,0.12)] backdrop-blur-xl border border-[#D9E1EC] dark:bg-slate-900/90 dark:border-white/10"
+            : "bg-white/70 backdrop-blur-md border border-[#D9E1EC]/60 shadow-[0_4px_16px_rgba(11,31,58,0.06)] dark:bg-slate-900/70 dark:border-white/10",
         ].join(" ")}
       >
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-4 py-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex min-w-0 items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#0B1F3A] text-sm font-bold tracking-wide text-white shadow-sm">
-              SI
-            </div>
-            <div className="min-w-0">
-              <p
-                className={[
-                  "truncate text-sm font-semibold transition-colors",
-                  scrolled ? "text-[#13213C] dark:text-white" : "text-white",
-                ].join(" ")}
-              >
-                Smart Inspections
-              </p>
-              <p
-                className={[
-                  "truncate text-xs transition-colors",
-                  scrolled ? "text-[#4B5565] dark:text-slate-300" : "text-slate-200",
-                ].join(" ")}
-              >
-                AI-Assisted FDA Inspection Documentation
-              </p>
-            </div>
-          </Link>
+        {/* Logo */}
+        <Link href="/" className="flex min-w-0 items-center gap-2.5 pl-1">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#282e63] text-xs font-bold tracking-wide text-white shadow-sm">
+            SI
+          </div>
+          <p className="truncate text-sm font-semibold text-[#282e63] dark:text-white">
+            Smart Inspections
+          </p>
+        </Link>
 
-          <div className="hidden items-center gap-7 lg:flex">
+        {/* Nav links */}
+        <div className="hidden items-center gap-1 lg:flex">
+          {navLinks.map((link) => (
+            <Link
+              key={link.label}
+              href={link.href}
+              className="rounded-full px-4 py-1.5 text-sm font-medium text-[#4B5565] transition-colors hover:bg-[#F0F4F8] hover:text-[#282e63] dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div className="hidden items-center gap-2 pr-1 lg:flex">
+          <ThemeToggle />
+          <Link
+            href="/login"
+            className="rounded-full border border-[#D9E1EC] px-4 py-1.5 text-sm font-medium text-[#282e63] transition-colors hover:bg-[#F7F9FC] dark:border-white/10 dark:text-white dark:hover:bg-white/10"
+          >
+            Log In
+          </Link>
+          <Link
+            href="/signup"
+            className="rounded-full bg-[#282e63] px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#282e63]"
+          >
+            Get Started
+          </Link>
+        </div>
+
+        {/* Mobile menu toggle */}
+        <button
+          type="button"
+          onClick={() => setMenuOpen((current) => !current)}
+          className="inline-flex rounded-full border border-[#D9E1EC] bg-white/90 p-2 text-[#282e63] dark:border-white/10 dark:bg-slate-900/90 dark:text-white lg:hidden"
+          aria-label="Toggle navigation menu"
+          aria-expanded={menuOpen ? "true" : "false"}
+        >
+          {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+      </nav>
+
+      {/* Mobile dropdown — outside the pill, below it */}
+      {menuOpen ? (
+        <div className="absolute top-[72px] left-4 right-4 rounded-2xl border border-[#D9E1EC] bg-white px-4 py-4 shadow-lg dark:border-white/10 dark:bg-slate-900 lg:hidden">
+          <div className="flex flex-col gap-2">
             {navLinks.map((link) => (
               <Link
                 key={link.label}
                 href={link.href}
-                className={[
-                  "text-sm font-medium transition-colors",
-                  scrolled
-                    ? "text-[#4B5565] hover:text-[#13213C] dark:text-slate-300 dark:hover:text-white"
-                    : "text-slate-200 hover:text-white",
-                ].join(" ")}
+                className="rounded-xl px-4 py-2 text-sm font-medium text-[#4B5565] transition-colors hover:bg-[#F0F4F8] hover:text-[#282e63] dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+                onClick={() => setMenuOpen(false)}
               >
                 {link.label}
               </Link>
             ))}
-          </div>
-
-          <div className="hidden items-center gap-3 lg:flex">
-            <ThemeToggle />
-            <Link
-              href="/login"
-              className={[
-                "rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
-                scrolled
-                  ? "border-[#D9E1EC] text-[#13213C] hover:bg-[#F7F9FC] dark:border-white/10 dark:text-white dark:hover:bg-white/10"
-                  : "border-white/25 text-white hover:bg-white/10",
-              ].join(" ")}
-            >
-              Log In
-            </Link>
-            <Link
-              href="/signup"
-              className="rounded-xl bg-[#0B1F3A] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#10294A]"
-            >
-              Get Started
-            </Link>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setMenuOpen((current) => !current)}
-            className="inline-flex rounded-xl border border-[#D9E1EC] bg-white/90 p-2 text-[#13213C] dark:border-white/10 dark:bg-slate-900/90 dark:text-white lg:hidden"
-            aria-label="Toggle navigation menu"
-            aria-expanded={menuOpen}
-          >
-            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-
-        {menuOpen ? (
-          <div className="border-t border-[#D9E1EC] bg-white px-4 py-4 dark:border-white/10 dark:bg-slate-900 lg:hidden sm:px-6">
-            <div className="flex flex-col gap-3">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  className="text-sm font-medium text-[#4B5565] transition-colors hover:text-[#13213C] dark:text-slate-300 dark:hover:text-white"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  {link.label}
-                </Link>
-              ))}
-              <div className="mt-2 flex items-center gap-3">
-                <ThemeToggle />
-                <Link
-                  href="/login"
-                  className="flex-1 rounded-xl border border-[#D9E1EC] px-4 py-2 text-center text-sm font-medium text-[#13213C] dark:border-white/10 dark:text-white"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Log In
-                </Link>
-                <Link
-                  href="/signup"
-                  className="flex-1 rounded-xl bg-[#0B1F3A] px-4 py-2 text-center text-sm font-semibold text-white"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Get Started
-                </Link>
-              </div>
+            <div className="mt-2 flex items-center gap-3 border-t border-[#D9E1EC] pt-3 dark:border-white/10">
+              <ThemeToggle />
+              <Link
+                href="/login"
+                className="flex-1 rounded-full border border-[#D9E1EC] px-4 py-2 text-center text-sm font-medium text-[#282e63] dark:border-white/10 dark:text-white"
+                onClick={() => setMenuOpen(false)}
+              >
+                Log In
+              </Link>
+              <Link
+                href="/signup"
+                className="flex-1 rounded-full bg-[#282e63] px-4 py-2 text-center text-sm font-semibold text-white"
+                onClick={() => setMenuOpen(false)}
+              >
+                Get Started
+              </Link>
             </div>
           </div>
-        ) : null}
-      </nav>
+        </div>
+      ) : null}
     </header>
   );
 }
