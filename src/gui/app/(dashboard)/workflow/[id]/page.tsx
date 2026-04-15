@@ -31,6 +31,7 @@ import {
   Mail,
   UserPlus,
   Sparkles,
+  Archive,
 } from 'lucide-react';
 import Form483Preview from '@/components/inspection/Form483Preview';
 import EIRPreview from '@/components/inspection/EIRPreview';
@@ -69,6 +70,7 @@ type Inspection = {
   raw_notes: string;
   created_at: string;
   updated_at: string;
+  workflow_archived?: boolean;
 };
 
 type WorkflowLog = {
@@ -195,6 +197,8 @@ const ACTION_ICONS: Record<string, React.ElementType> = {
   APPROVED_483: CheckCircle2, SENT_483_TO_FIRM: Mail, EIR_ASSIGNED: UserPlus,
   EIR_DRAFTING_STARTED: FileText, EIR_REWORK_STARTED: RotateCcw,
   '483_RETURNED_FOR_REVISION': RotateCcw,
+  WORKFLOW_ARCHIVED: Archive,
+  WORKFLOW_RESTORED: RotateCcw,
 };
 
 export default function InspectionDetailPage() {
@@ -229,6 +233,7 @@ export default function InspectionDetailPage() {
   const [assignToId, setAssignToId] = useState('');
   const [pipelineEirLoading, setPipelineEirLoading] = useState(false);
   const [companyHistory, setCompanyHistory] = useState<{ inspection_id: string; title: string; investigator_name: string | null; year: string; status: string }[]>([]);
+  const [archiveActionLoading, setArchiveActionLoading] = useState(false);
 
   const isSupervisor = profile?.role === 'supervisor';
 
@@ -345,6 +350,28 @@ export default function InspectionDetailPage() {
     }
   }
 
+  async function handleWorkflowArchive(archived: boolean) {
+    setArchiveActionLoading(true);
+    try {
+      const res = await fetch(`/api/inspections/${id}/archive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ archived }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(typeof data.error === 'string' ? data.error : 'Could not update archive status');
+        return;
+      }
+      toast.success(archived ? 'Inspection archived — hidden from active workflow' : 'Inspection restored to active workflow');
+      await loadData();
+      queryClient.invalidateQueries({ queryKey: dashboardPublishStatsQueryKey });
+    } finally {
+      setArchiveActionLoading(false);
+    }
+  }
+
   async function handleGeneratePipelineEir() {
     setPipelineEirLoading(true);
     try {
@@ -450,6 +477,7 @@ export default function InspectionDetailPage() {
   }
 
   const status = inspection.status;
+  const isWorkflowArchived = inspection.workflow_archived === true;
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.created;
   const fdaPipelineMeta = isFdaPipelineMeta(inspection.metadata_json);
   const fdaSequencedMeta = isFdaSequencedMeta(inspection.metadata_json);
@@ -626,8 +654,48 @@ export default function InspectionDetailPage() {
           <h1 className="text-xl font-bold text-gray-900">{inspection.title}</h1>
           <p className="text-sm text-gray-500">{inspection.firm_name} {inspection.fei_number ? `(FEI: ${inspection.fei_number})` : ''}</p>
         </div>
-        <span className={`rounded-full px-3 py-1.5 text-sm font-semibold ${cfg.color} ${cfg.bg}`}>{statusLabelDisplay}</span>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {isSupervisor && (
+            <>
+              {isWorkflowArchived ? (
+                <button
+                  type="button"
+                  disabled={archiveActionLoading}
+                  onClick={() => { void handleWorkflowArchive(false); }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm font-semibold text-green-900 hover:bg-green-100 disabled:opacity-50"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Restore to workflow
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={archiveActionLoading}
+                  onClick={() => {
+                    if (window.confirm('Archive this inspection? It will leave the active list and investigators will lose access until you restore it.')) {
+                      void handleWorkflowArchive(true);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <Archive className="h-4 w-4" />
+                  Archive
+                </button>
+              )}
+            </>
+          )}
+          <span className={`rounded-full px-3 py-1.5 text-sm font-semibold ${cfg.color} ${cfg.bg}`}>{statusLabelDisplay}</span>
+        </div>
       </div>
+
+      {isWorkflowArchived && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p className="font-semibold">Archived — out of active workflow</p>
+          <p className="mt-1 text-amber-900/90">
+            Investigators cannot see or edit this package. Workflow actions are disabled until a supervisor restores it from the Archived tab on the workflow list.
+          </p>
+        </div>
+      )}
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3">

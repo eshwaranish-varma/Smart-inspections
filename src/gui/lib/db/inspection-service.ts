@@ -49,12 +49,28 @@ export type InspectionRecord = {
   eir_json: string;
   metadata_json: string;
   raw_notes: string;
+  /** When true, inspection is hidden from active workflow lists; supervisor-only access until restored. */
+  workflow_archived?: boolean;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
   creator_name?: string;
   assignee_name?: string;
 };
+
+export type InspectionArchiveListMode = "active" | "archived" | "all";
+
+export function isInspectionWorkflowArchived(i: Pick<InspectionRecord, "workflow_archived">): boolean {
+  return i.workflow_archived === true;
+}
+
+function assertInspectionNotWorkflowArchived(i: InspectionRecord): void {
+  if (isInspectionWorkflowArchived(i)) {
+    throw new Error(
+      "This inspection is archived. A supervisor must restore it from the workflow list before continuing."
+    );
+  }
+}
 
 export type WorkflowLogRecord = {
   id: string;
@@ -137,6 +153,7 @@ export function canUserAccessInspection(
   userRole: string
 ): boolean {
   if (userRole === "supervisor") return true;
+  if (isInspectionWorkflowArchived(inspection)) return false;
   return inspection.assigned_to === userId || inspection.created_by === userId;
 }
 
@@ -251,6 +268,29 @@ export async function createInspection(input: {
   return inspection;
 }
 
+/** Supervisor-only: hide inspection from active workflow or restore it. */
+export async function setInspectionWorkflowArchived(
+  inspectionId: string,
+  archived: boolean,
+  performedBy: string
+): Promise<InspectionRecord> {
+  await ensureAuthTables();
+  const current = await getInspectionById(inspectionId);
+  if (!current) throw new Error("Inspection not found");
+  const result = await pool.query<InspectionRecord>(
+    `UPDATE inspections SET workflow_archived = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+    [archived, inspectionId]
+  );
+  const updated = result.rows[0];
+  if (!updated) throw new Error("Inspection not found");
+  const action = archived ? "WORKFLOW_ARCHIVED" : "WORKFLOW_RESTORED";
+  const comment = archived
+    ? "Inspection removed from active workflow (supervisor archive)."
+    : "Inspection restored to active workflow.";
+  await logWorkflowAction(inspectionId, action, performedBy, comment, current.status, current.status);
+  return (await getInspectionById(inspectionId)) ?? updated;
+}
+
 export async function assignInspection(
   inspectionId: string,
   assignedTo: string,
@@ -260,6 +300,7 @@ export async function assignInspection(
   await ensureAuthTables();
   const current = await getInspectionById(inspectionId);
   if (!current) throw new Error("Inspection not found");
+  assertInspectionNotWorkflowArchived(current);
   if (!canTransition(current.status, "assigned")) {
     throw new Error(`Cannot assign inspection in status '${current.status}'`);
   }
@@ -288,6 +329,7 @@ export async function assignEirDrafting(
   await ensureAuthTables();
   const current = await getInspectionById(inspectionId);
   if (!current) throw new Error("Inspection not found");
+  assertInspectionNotWorkflowArchived(current);
   if (!canTransition(current.status, "eir_assigned")) {
     throw new Error(`Cannot assign EIR drafting in status '${current.status}'`);
   }
@@ -321,6 +363,7 @@ export async function mergeInspectionMetadata(
   await ensureAuthTables();
   const current = await getInspectionById(inspectionId);
   if (!current) throw new Error("Inspection not found");
+  assertInspectionNotWorkflowArchived(current);
   const meta = parseInspectionMetadataJson(current.metadata_json);
   const merged = { ...meta, ...patch };
   const result = await pool.query<InspectionRecord>(
@@ -340,6 +383,7 @@ export async function transitionStatus(
   await ensureAuthTables();
   const current = await getInspectionById(inspectionId);
   if (!current) throw new Error("Inspection not found");
+  assertInspectionNotWorkflowArchived(current);
   if (!canTransition(current.status, newStatus)) {
     throw new Error(`Cannot transition from '${current.status}' to '${newStatus}'`);
   }
@@ -372,6 +416,9 @@ export async function updateInspectionData(
   }
 ): Promise<InspectionRecord> {
   await ensureAuthTables();
+  const existing = await getInspectionById(inspectionId);
+  if (!existing) throw new Error("Inspection not found");
+  assertInspectionNotWorkflowArchived(existing);
   const sets: string[] = ["updated_at = NOW()"];
   const vals: unknown[] = [];
   let idx = 1;
@@ -420,25 +467,39 @@ export async function getInspectionsByUser(userId: string): Promise<InspectionRe
      FROM inspections i
      LEFT JOIN users cu ON cu.id = i.created_by
      LEFT JOIN users au ON au.id = i.assigned_to
-     WHERE i.assigned_to = $1
+     WHERE i.assigned_to = $1 AND COALESCE(i.workflow_archived, FALSE) = FALSE
      ORDER BY i.updated_at DESC`,
     [userId]
   );
   return result.rows;
 }
 
-export async function getAllInspections(statusFilter?: string): Promise<InspectionRecord[]> {
+export async function getAllInspections(
+  statusFilter?: string,
+  archiveMode: InspectionArchiveListMode = "active"
+): Promise<InspectionRecord[]> {
   await ensureAuthTables();
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  let idx = 1;
+  if (statusFilter) {
+    conditions.push(`i.status = $${idx}`);
+    params.push(statusFilter);
+    idx++;
+  }
+  if (archiveMode === "active") {
+    conditions.push(`COALESCE(i.workflow_archived, FALSE) = FALSE`);
+  } else if (archiveMode === "archived") {
+    conditions.push(`COALESCE(i.workflow_archived, FALSE) = TRUE`);
+  }
   let query = `SELECT i.*,
                       (cu.first_name || ' ' || cu.last_name) AS creator_name,
                       (au.first_name || ' ' || au.last_name) AS assignee_name
                FROM inspections i
                LEFT JOIN users cu ON cu.id = i.created_by
                LEFT JOIN users au ON au.id = i.assigned_to`;
-  const params: string[] = [];
-  if (statusFilter) {
-    query += ` WHERE i.status = $1`;
-    params.push(statusFilter);
+  if (conditions.length) {
+    query += ` WHERE ${conditions.join(" AND ")}`;
   }
   query += ` ORDER BY i.updated_at DESC`;
   const result = await pool.query<InspectionRecord>(query, params);
@@ -472,6 +533,9 @@ export async function createReview(
   }
 ): Promise<void> {
   await ensureAuthTables();
+  const inspectionPrecheck = await getInspectionById(inspectionId);
+  if (!inspectionPrecheck) throw new Error("Inspection not found");
+  assertInspectionNotWorkflowArchived(inspectionPrecheck);
   if (signature) {
     await saveUserSignatureProfile(reviewerId, signature);
   }
@@ -506,6 +570,9 @@ export async function addInspectionComment(
   comment: string
 ): Promise<InspectionCommentRecord> {
   await ensureAuthTables();
+  const insp = await getInspectionById(inspectionId);
+  if (!insp) throw new Error("Inspection not found");
+  assertInspectionNotWorkflowArchived(insp);
   const result = await pool.query<InspectionCommentRecord>(
     `INSERT INTO inspection_comments (inspection_id, author_id, author_role, comment)
      VALUES ($1, $2, $3, $4)
@@ -997,7 +1064,8 @@ export async function getActiveDraftCount(): Promise<number> {
   await ensureAuthTables();
   const result = await pool.query<{ c: string | null }>(
     `SELECT COUNT(*)::text AS c FROM inspections
-     WHERE status IN (
+     WHERE COALESCE(workflow_archived, FALSE) = FALSE
+     AND status IN (
        'created', 'assigned', 'in_progress', 'draft_completed',
        'approved_483', 'sent_to_firm', 'eir_assigned', 'eir_drafting',
        'eir_submitted', 'under_review', 'rework_required'

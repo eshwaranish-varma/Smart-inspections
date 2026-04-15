@@ -7,6 +7,7 @@ import { dashboardPublishStatsQueryKey } from '@/lib/dashboard-publish-stats';
 import {
   Plus, Users, ClipboardCheck, Eye, CheckCircle2, XCircle, RotateCcw,
   ChevronDown, Search, Loader2, AlertTriangle, Clock, FileText, ArrowRight,
+  Archive,
 } from 'lucide-react';
 
 type Inspection = {
@@ -27,6 +28,7 @@ type Inspection = {
   updated_at: string;
   /** Present on list rows from DB; used for FDA 483→EIR vs legacy badge. */
   metadata_json?: string | null;
+  workflow_archived?: boolean;
 };
 
 function isFdaWorkflowRow(metadataJson?: string | null): boolean {
@@ -108,6 +110,9 @@ export default function WorkflowPage() {
     last_status: string | null;
   }[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  /** Supervisor: active workflow vs archived (hidden) inspections */
+  const [supervisorListTab, setSupervisorListTab] = useState<'active' | 'archived'>('active');
+  const [archiveBusyId, setArchiveBusyId] = useState<string | null>(null);
 
   const [newInspection, setNewInspection] = useState({
     title: '', firmName: '', feiNumber: '', establishmentType: '', districtOffice: '',
@@ -118,17 +123,21 @@ export default function WorkflowPage() {
 
   const loadData = useCallback(async () => {
     setLoadError(null);
+    setLoading(true);
     try {
-      const [profileRes, inspRes] = await Promise.all([
-        fetch('/api/profile', { credentials: 'include' }),
-        fetch('/api/inspections', { credentials: 'include' }),
-      ]);
+      const profileRes = await fetch('/api/profile', { credentials: 'include' });
+      let role: string | undefined;
       if (profileRes.ok) {
         const pData = await profileRes.json();
         setProfile(pData.profile);
+        role = pData.profile?.role;
       } else if (profileRes.status === 401) {
         setLoadError('Session expired. Please sign in again.');
       }
+
+      const archivedQs =
+        role === 'supervisor' && supervisorListTab === 'archived' ? '?archived=1' : '';
+      const inspRes = await fetch(`/api/inspections${archivedQs}`, { credentials: 'include' });
       if (inspRes.ok) {
         const iData = await inspRes.json();
         setInspections(iData.inspections || []);
@@ -149,14 +158,15 @@ export default function WorkflowPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [supervisorListTab]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   const filtered = inspections.filter(i => {
     const matchesSearch = !search || i.title.toLowerCase().includes(search.toLowerCase()) ||
       i.firm_name.toLowerCase().includes(search.toLowerCase()) || i.fei_number.includes(search);
-    const matchesStatus = statusFilter === 'all' || i.status === statusFilter;
+    const matchesStatus =
+      supervisorListTab === 'archived' ? true : statusFilter === 'all' || i.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -182,6 +192,27 @@ export default function WorkflowPage() {
         queryClient.invalidateQueries({ queryKey: dashboardPublishStatsQueryKey });
       }
     } finally { setCreating(false); }
+  }
+
+  async function setInspectionArchived(inspectionId: string, archived: boolean) {
+    setArchiveBusyId(inspectionId);
+    try {
+      const res = await fetch(`/api/inspections/${inspectionId}/archive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ archived }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        window.alert(typeof data.error === 'string' ? data.error : 'Could not update archive status.');
+        return;
+      }
+      await loadData();
+      queryClient.invalidateQueries({ queryKey: dashboardPublishStatsQueryKey });
+    } finally {
+      setArchiveBusyId(null);
+    }
   }
 
   function openAssignModal(inspectionId: string) {
@@ -252,18 +283,52 @@ export default function WorkflowPage() {
               : 'View assigned inspections and track progress. Rows marked 483→EIR follow supervisor approval of the 483, firm notification, then EIR drafting.'}
           </p>
         </div>
-        {isSupervisor && (
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-navy-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-navy-800 transition-colors"
-          >
-            <Plus className="h-4 w-4" /> Create Assignment
-          </button>
-        )}
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+          {isSupervisor && (
+            <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+              <button
+                type="button"
+                onClick={() => { setSupervisorListTab('active'); }}
+                className={`rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                  supervisorListTab === 'active'
+                    ? 'bg-white text-navy-800 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Active workflow
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSupervisorListTab('archived'); }}
+                className={`rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                  supervisorListTab === 'archived'
+                    ? 'bg-white text-navy-800 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Archived
+              </button>
+            </div>
+          )}
+          {isSupervisor && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-navy-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-navy-800 transition-colors"
+            >
+              <Plus className="h-4 w-4" /> Create Assignment
+            </button>
+          )}
+        </div>
       </div>
 
+      {isSupervisor && supervisorListTab === 'archived' && (
+        <p className="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          Archived inspections stay out of the active list and are hidden from investigators until you restore them.
+        </p>
+      )}
+
       {/* Status summary cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className={`grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 ${isSupervisor && supervisorListTab === 'archived' ? 'hidden' : ''}`}>
         {Object.entries(STATUS_CONFIG).filter(([k]) => statusCounts[k]).map(([key, cfg]) => {
           const Icon = cfg.icon;
           return (
@@ -294,19 +359,21 @@ export default function WorkflowPage() {
             className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-navy-500 focus:ring-1 focus:ring-navy-500 outline-none"
           />
         </div>
-        <div className="relative">
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="appearance-none rounded-lg border border-gray-300 bg-white py-2.5 pl-4 pr-10 text-sm focus:border-navy-500 focus:ring-1 focus:ring-navy-500 outline-none"
-          >
-            <option value="all">All Statuses</option>
-            {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-              <option key={key} value={key}>{cfg.label}</option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        </div>
+        {!(isSupervisor && supervisorListTab === 'archived') && (
+          <div className="relative">
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="appearance-none rounded-lg border border-gray-300 bg-white py-2.5 pl-4 pr-10 text-sm focus:border-navy-500 focus:ring-1 focus:ring-navy-500 outline-none"
+            >
+              <option value="all">All Statuses</option>
+              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                <option key={key} value={key}>{cfg.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          </div>
+        )}
       </div>
 
       {/* Inspections table */}
@@ -316,7 +383,9 @@ export default function WorkflowPage() {
           <p className="text-sm font-medium text-gray-500">
             {inspections.length === 0
               ? isSupervisor
-                ? 'No inspections yet — create an assignment to get started.'
+                ? supervisorListTab === 'archived'
+                  ? 'No archived inspections.'
+                  : 'No inspections yet — create an assignment to get started.'
                 : 'No assignments yet. When a supervisor assigns an inspection to you, it will appear here.'
               : 'No inspections match your filters'}
           </p>
@@ -361,8 +430,34 @@ export default function WorkflowPage() {
                     {new Date(insp.updated_at).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {isSupervisor && insp.status === 'created' && (
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      {isSupervisor && supervisorListTab === 'active' && (
+                        <button
+                          type="button"
+                          disabled={archiveBusyId === insp.id}
+                          onClick={() => {
+                            if (window.confirm(`Archive “${insp.title}”? It will disappear from the active list and from investigators until you restore it.`)) {
+                              void setInspectionArchived(insp.id, true);
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        >
+                          <Archive className="h-3.5 w-3.5" />
+                          {archiveBusyId === insp.id ? '…' : 'Archive'}
+                        </button>
+                      )}
+                      {isSupervisor && supervisorListTab === 'archived' && (
+                        <button
+                          type="button"
+                          disabled={archiveBusyId === insp.id}
+                          onClick={() => { void setInspectionArchived(insp.id, false); }}
+                          className="inline-flex items-center gap-1 rounded-md bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-800 hover:bg-green-100 transition-colors disabled:opacity-50"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          {archiveBusyId === insp.id ? '…' : 'Restore'}
+                        </button>
+                      )}
+                      {isSupervisor && insp.status === 'created' && supervisorListTab === 'active' && (
                         <button
                           onClick={() => openAssignModal(insp.id)}
                           className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors"

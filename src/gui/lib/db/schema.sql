@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS inspections (
   eir_json TEXT DEFAULT '{}',
   metadata_json TEXT DEFAULT '{}',
   raw_notes TEXT DEFAULT '',
+  workflow_archived BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );

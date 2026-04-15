@@ -311,6 +311,9 @@ async function runAuthSchemaMigrations(client: PoolClient): Promise<void> {
   `);
 
   await client.query(`ALTER TABLE inspections ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP;`);
+  await client.query(
+    `ALTER TABLE inspections ADD COLUMN IF NOT EXISTS workflow_archived BOOLEAN NOT NULL DEFAULT FALSE;`
+  );
 
   /** Demo accounts: keep canonical supervisor role (login page lists these emails). */
   await client.query(

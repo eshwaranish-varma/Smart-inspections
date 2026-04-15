@@ -4,6 +4,7 @@ import {
   createInspection,
   getAllInspections,
   getInspectionsByUser,
+  type InspectionArchiveListMode,
 } from "@/lib/db/inspection-service";
 
 export async function GET(req: NextRequest) {
@@ -12,9 +13,17 @@ export async function GET(req: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const status = req.nextUrl.searchParams.get("status") || undefined;
+    const archivedParam = req.nextUrl.searchParams.get("archived");
+    let archiveMode: InspectionArchiveListMode = "active";
+    if (user.role === "supervisor") {
+      if (archivedParam === "all") archiveMode = "all";
+      else if (archivedParam === "1" || archivedParam === "true" || archivedParam === "only") {
+        archiveMode = "archived";
+      }
+    }
 
     if (user.role === "supervisor") {
-      const inspections = await getAllInspections(status);
+      const inspections = await getAllInspections(status, archiveMode);
       return NextResponse.json({ inspections });
     }
 

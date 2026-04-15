@@ -124,3 +124,6 @@ CREATE TABLE IF NOT EXISTS document_library_records (
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Supervisor workflow archive (hide from active list; restore later)
+ALTER TABLE inspections ADD COLUMN IF NOT EXISTS workflow_archived BOOLEAN NOT NULL DEFAULT FALSE;
