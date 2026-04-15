@@ -145,6 +145,8 @@ export interface EvaluationScores {
   /** When set, compares drafted observation count to pre-draft estimate from OCR/raw notes. */
   expected_observation_count?: number | null;
   count_match?: boolean | null;
+  /** True when API reports a mismatch (alias for UX; may mirror `count_match === false`). */
+  observation_count_mismatch?: boolean;
   metrics?: GenerateObservationsRunMetrics;
 }
 
@@ -330,6 +332,10 @@ export interface DocumentLibraryItem {
   observation_count: number;
   document_type: string;
   status: string;
+  /** Normalized label from API (e.g. IN PROGRESS, COMPLETED). */
+  status_display?: string;
+  /** Workflow inspection UUID when saved from New Inspection. */
+  inspection_id?: string | null;
   created_at: string;
 }
 

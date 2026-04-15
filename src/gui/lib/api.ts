@@ -161,17 +161,35 @@ export const downloadDocument = async (
 export const getLibrary = () =>
   apiFetch<DocumentLibraryItem[]>(`${BASE}/library`);
 
+export type LibraryDocumentDetail = {
+  id: number;
+  firm_name: string;
+  fei_number: string;
+  observation_count: number;
+  observations: DraftObservation[];
+  metadata: InspectionMetadata;
+  document_type: string;
+  status: string;
+  status_display?: string;
+  inspection_id?: string | null;
+  created_at: string;
+};
+
 export const saveToLibrary = (data: Record<string, unknown>) =>
   apiFetch(`${BASE}/library`, { method: 'POST', body: JSON.stringify(data) });
 
 export const getLibraryItem = (id: number) =>
-  apiFetch(`${BASE}/library/${id}`);
+  apiFetch<LibraryDocumentDetail>(`${BASE}/library/${id}`);
 
 export const deleteLibraryItem = (id: number) =>
   apiFetch(`${BASE}/library/${id}`, { method: 'DELETE' });
 
-export const getHealth = () =>
-  apiFetch(`${BASE}/health`);
+export type HealthResponse = {
+  status?: string;
+  kb_loaded?: boolean;
+};
+
+export const getHealth = () => apiFetch<HealthResponse>(`${BASE}/health`);
 
 export const getTopRegulations = (limit: number = 10) =>
   apiFetch<{ items: TopRegulationItem[] }>(`${BASE}/references/top-regulations${qs({ limit })}`).then(r => r.items);

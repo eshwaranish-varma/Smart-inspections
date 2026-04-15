@@ -3,6 +3,9 @@ import { Toaster } from "sonner";
 import QueryProvider from "@/components/providers/QueryProvider";
 import "./globals.css";
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 export const metadata: Metadata = {
   title: "Smart Inspections — FDA Investigator Portal",
   description: "FDA regulatory inspection management and document intelligence platform",

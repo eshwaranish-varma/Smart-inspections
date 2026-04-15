@@ -1,14 +1,15 @@
-# Deployment Guide: Render + Vercel Multi-Frontend Setup
+# Deployment Guide: Render + Vercel (Next.js)
 
 ## 📋 Overview
 - **Backend**: Render.io (Python/FastAPI)
-- **Frontend1**: Vercel 
-- **Frontend2**: Vercel
-- **Database**: PostgreSQL (Render or external)
-- **Storage**: Supabase Storage
+- **Frontend**: Vercel (Next.js app in `src/gui`)
+- **Database**: PostgreSQL (Render or external, e.g. Supabase)
+- **Storage**: Supabase Storage (optional)
 - **Large Data**: To be stored externally (see Data Management)
 
 ---
+
+Repository root `vercel.json` runs `npm install` and `npm run build` inside **`src/gui`**. In the Vercel project you can instead set **Root Directory** to `src/gui` and use the default Next.js build (then root `vercel.json` build commands can be simplified or removed).
 
 ## 🚀 Quick Deployment Steps
 
@@ -72,29 +73,21 @@ git push origin main
 
 ---
 
-### Step 3: Deploy Frontends on Vercel
-
-**3.1 Frontend 1 Setup:**
+### Step 3: Deploy Next.js on Vercel
 
 1. Log in to [Vercel](https://vercel.com)
-2. **Add New Project**
-3. Import from Git (select your repo)
-4. **Framework**: Vite
-5. **Root Directory**: `frontend/`
-6. **Build Command**: `npm run build`
-7. **Output Directory**: `dist`
-8. Environment Variables:
-   ```
-   VITE_API_BASE_URL=https://your-backend.onrender.com
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_anon_key
-   ```
-9. **Deploy**
-
-**3.2 Frontend 2 Setup:**
-
-Repeat Step 3.1 for second frontend (if different codebase):
-- Or create as a monorepo if same code with different configs
+2. **Add New Project** → import this repository
+3. **Framework preset**: Next.js (auto-detected when Root Directory is `src/gui`)
+4. **Root Directory**: `src/gui` (recommended), *or* leave repo root and keep root `vercel.json` `installCommand` / `buildCommand`
+5. **Environment variables** (minimum; match `.env.example` and production URLs):
+   - `DATABASE_URL` — Postgres (e.g. Supabase)
+   - `JWT_SECRET`
+   - `NEXT_PUBLIC_APP_URL` — your Vercel URL (e.g. `https://your-app.vercel.app`)
+   - `BACKEND_API_URL` — your Render FastAPI origin (e.g. `https://your-backend.onrender.com`) for server-side route handlers
+   - Optional: `NEXT_PUBLIC_API_URL` if the browser must call FastAPI on a different host
+   - Optional: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or publishable key) for Supabase client refresh
+6. In **Render**, set `CORS_ORIGINS` to include your Vercel origin
+7. **Deploy**
 
 ---
 
@@ -156,7 +149,7 @@ data/raw/*.pdf
 
 - [ ] `backend/.dockerignore` excludes `/data`, `/artifacts`
 - [ ] `backend/requirements-prod.txt` created and tested locally
-- [ ] `frontend/.vercelignore` excludes non-essential files
+- [ ] Vercel project Root Directory is `src/gui` (or root `vercel.json` build commands are correct)
 - [ ] `vercel.json` created with correct settings
 - [ ] Environment variables configured in Render & Vercel
 - [ ] Backend deployed and `/health` endpoint returns 200
@@ -176,7 +169,7 @@ data/raw/*.pdf
 
 ### "Frontend can't reach backend"
 - Check `CORS_ORIGINS` in Render environment
-- Verify frontend `VITE_API_BASE_URL` matches Render URL
+- Verify `BACKEND_API_URL` / `NEXT_PUBLIC_API_URL` and Render URL match your deployment
 - Check Render logs: `render.com → Dashboard → Logs`
 
 ### "RAG data not loading"
@@ -192,11 +185,10 @@ Update these in Vercel and Render:
 
 ```
 Backend: https://smart-inspection-backend.onrender.com
-Frontend1: https://frontend1.vercel.app
-Frontend2: https://frontend2.vercel.app
+Frontend: https://your-app.vercel.app
 
 CORS Policy:
-  - Allow: Frontend1 & Frontend2 origins
+  - Allow: your Vercel frontend origin
   - Allow: GitHub Actions (CI/CD)
 ```
 
@@ -216,6 +208,6 @@ CORS Policy:
 
 1. **Week 1**: Setup Supabase Storage, migrate data
 2. **Week 2**: Deploy backend to Render, verify health check
-3. **Week 3**: Deploy both frontends to Vercel
+3. **Week 3**: Deploy Next.js frontend to Vercel
 4. **Week 4**: Load testing and optimization
 

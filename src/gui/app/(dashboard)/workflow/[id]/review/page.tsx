@@ -195,25 +195,6 @@ export default function WorkflowAiReviewPage() {
                       <li key={i} className="rounded-md border border-white/40 bg-white/80 p-2 dark:bg-slate-900/60">
                         <span className="text-xs text-slate-500">Page {ev.page}</span>
                         <p className="mt-1 text-slate-800 dark:text-slate-100">{ev.highlight_text}</p>
-                        <Link
-                          href={`/workflow/${id}/document-review?page=${ev.page}`}
-                          onClick={() => {
-                            try {
-                              sessionStorage.setItem(
-                                `si:docReviewEvidence:${id}`,
-                                JSON.stringify({
-                                  page: ev.page,
-                                  text: typeof ev.highlight_text === "string" ? ev.highlight_text : "",
-                                })
-                              );
-                            } catch {
-                              /* quota / private mode */
-                            }
-                          }}
-                          className="mt-2 inline-block text-xs font-medium text-navy-700 underline dark:text-cyan-300"
-                        >
-                          Open document workspace
-                        </Link>
                       </li>
                     ))}
                   </ul>
@@ -236,12 +217,6 @@ export default function WorkflowAiReviewPage() {
           className="inline-flex rounded-lg bg-navy-700 px-4 py-2 text-sm font-medium text-white hover:bg-navy-800"
         >
           Evaluation dashboard
-        </Link>
-        <Link
-          href={`/workflow/${id}/document-review`}
-          className="inline-flex rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-slate-800"
-        >
-          Document review workspace
         </Link>
       </div>
     </div>

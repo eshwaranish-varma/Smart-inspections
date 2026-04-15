@@ -16,7 +16,7 @@ This document explains **SQLAlchemy’s role**, how **Supabase** fits in, and **
 
 | Capability | Where |
 | ---------- | ----- |
-| Persist **saved Form 483–style drafts** (Vite path) | `SavedDocument` |
+| Persist **saved Form 483–style drafts** (drafting / library) | `SavedDocument` |
 | **Audit log** rows for backend actions | `AuditLog` |
 | **Full AI pipeline trace** for `/api/ai/generate-observations` | `pipeline_runs`, `pipeline_run_events`, `pipeline_run_chunks`, `pipeline_run_cfr_matches`, `pipeline_run_observations` |
 

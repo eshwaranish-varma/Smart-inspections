@@ -8,7 +8,7 @@ import {
   ClipboardCheck,
   FileText,
   FolderOpen,
-  Home,
+  LayoutDashboard,
   LineChart,
   Settings,
   Shield,
@@ -18,13 +18,13 @@ import { useAppStore } from "@/lib/store";
 import UserMenu from "@/components/layout/UserMenu";
 
 const navItems = [
-  { href: "/dashboard", label: "Home", icon: Home },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/workflow", label: "Workflow", icon: ClipboardCheck },
-  { href: "/observations", label: "Title 21 CFR", icon: BookOpen },
+  { href: "/library", label: "Document Library", icon: FolderOpen },
   { href: "/evaluation", label: "Evaluation", icon: LineChart },
-  { href: "/library", label: "Library", icon: FolderOpen },
+  { href: "/audit-trail", label: "Audit Trails", icon: Activity },
+  { href: "/observations", label: "CFR Citations", icon: BookOpen },
   { href: "/references", label: "References", icon: FileText },
-  { href: "/audit-trail", label: "Audit", icon: Activity },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -63,7 +63,8 @@ export default function Sidebar({
         {navItems.map((item) => {
           const Icon = item.icon;
           const active =
-            pathname === item.href || pathname?.startsWith(item.href + "/");
+            pathname === item.href ||
+            (item.href !== "/dashboard" && pathname?.startsWith(`${item.href}/`));
           return (
             <Link
               key={item.href}

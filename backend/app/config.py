@@ -116,7 +116,7 @@ class Settings(BaseSettings):
         default="title_21_sections",
         description="Postgres table name (public schema) for CFR section rows.",
     )
-    cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    cors_origins: str = "http://localhost:3000,http://localhost,http://127.0.0.1"
 
     # --- CFR citation retrieval (fuzzy | semantic | hybrid) ---
     cfr_match_mode: str = Field(
@@ -316,7 +316,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=_env_files() or None,
         env_file_encoding="utf-8",
-        # Monorepo `.env` includes Docker/Next/Vite keys the API does not use.
+        # Monorepo `.env` includes Docker/Next keys the API does not use.
         extra="ignore",
     )
 

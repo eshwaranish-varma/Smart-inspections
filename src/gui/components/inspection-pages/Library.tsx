@@ -74,6 +74,8 @@ export default function Library() {
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
       draft: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+      in_progress: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+      under_review: 'bg-amber-50 text-amber-800 border-amber-200',
       published: 'bg-green-50 text-green-700 border-green-200',
       archived: 'bg-gray-50 text-gray-600 border-gray-200',
     };
@@ -82,7 +84,7 @@ export default function Library() {
 
   const inspectionStatusLabel = (status: string) => {
     const normalized = status.toLowerCase();
-    if (normalized === 'draft') return 'IN PROGRESS';
+    if (normalized === 'draft' || normalized === 'in_progress') return 'IN PROGRESS';
     if (normalized === 'under_review') return 'PENDING REVIEW';
     if (normalized === 'published') return 'CLOSED';
     if (normalized === 'archived') return 'CLOSED';
@@ -93,6 +95,26 @@ export default function Library() {
     const digitsOnly = value.replace(/\D+/g, '');
     if (!digitsOnly) return '—';
     return digitsOnly.slice(-10).padStart(10, '0');
+  };
+
+  const approvedLibraryStatusBadge = (status: string): { label: string; className: string } => {
+    const s = status.toLowerCase();
+    if (s === 'published') {
+      return {
+        label: 'PUBLISHED',
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+      };
+    }
+    if (s === 'ready_to_publish') {
+      return {
+        label: 'READY TO PUBLISH',
+        className: 'border-green-200 bg-green-50 text-green-700',
+      };
+    }
+    return {
+      label: s.replace(/_/g, ' ').toUpperCase() || '—',
+      className: 'border-gray-200 bg-gray-50 text-gray-700',
+    };
   };
 
   const status483Label = (item: DocumentLibraryItem) => {
@@ -166,7 +188,11 @@ export default function Library() {
       </div>
 
       <div>
-        <h2 className="mb-3 text-lg font-semibold text-gray-900">Approved Documents</h2>
+        <h2 className="mb-1 text-lg font-semibold text-gray-900">Approved Documents</h2>
+        <p className="text-sm text-gray-500">
+          Supervisor-approved packages: <strong className="text-gray-700">Published</strong> (issued / closed) and{' '}
+          <strong className="text-gray-700">Ready to publish</strong> (pending final publish).
+        </p>
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -187,7 +213,8 @@ export default function Library() {
               onChange={(e) => setApprovedStatus(e.target.value)}
               className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
             >
-              <option value="">All</option>
+              <option value="">All statuses</option>
+              <option value="published">Published</option>
               <option value="ready_to_publish">Ready to Publish</option>
             </select>
           </div>
@@ -215,15 +242,19 @@ export default function Library() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {approvedDocs.map((item) => (
+                {approvedDocs.map((item) => {
+                  const statusBadge = approvedLibraryStatusBadge(item.status);
+                  return (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-gray-700">{item.title}</td>
                     <td className="px-4 py-3 text-gray-600">{item.approved_at ? format(new Date(item.approved_at), 'MMM d, yyyy') : '—'}</td>
                     <td className="px-4 py-3 text-gray-600">{item.investigator_name || '—'}</td>
                     <td className="px-4 py-3 text-gray-600">{item.supervisor_name || '—'}</td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
-                        READY TO PUBLISH
+                      <span
+                        className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusBadge.className}`}
+                      >
+                        {statusBadge.label}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -252,7 +283,8 @@ export default function Library() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -260,7 +292,11 @@ export default function Library() {
       )}
 
       <div>
-        <h2 className="mb-3 text-lg font-semibold text-gray-900">Active Inspections</h2>
+        <h2 className="mb-1 text-lg font-semibold text-gray-900">Active drafts</h2>
+        <p className="text-sm text-gray-500">
+          In-progress saves from New Inspection (same firm/FEI shows the latest draft only). Rows clear when the workflow is
+          approved to the document library.
+        </p>
       </div>
 
       {library.isLoading ? (
@@ -315,7 +351,7 @@ export default function Library() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
                       <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusBadge(item.status)}`}>
-                        {inspectionStatusLabel(item.status)}
+                        {item.status_display ?? inspectionStatusLabel(item.status)}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-gray-500">

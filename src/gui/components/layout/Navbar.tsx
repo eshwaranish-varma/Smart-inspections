@@ -1,6 +1,7 @@
 "use client";
 
-import { Bell, Menu, Search } from "lucide-react";
+import { Menu, Search } from "lucide-react";
+import NotificationBell from "@/components/layout/NotificationBell";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 
 export default function Navbar({
@@ -41,14 +42,7 @@ export default function Navbar({
             />
           </div>
 
-          <button
-            type="button"
-            className="relative inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-600 shadow-sm transition-all duration-300 hover:scale-[1.03] hover:shadow-md dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
-            aria-label="Notifications"
-          >
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-amber-500" />
-          </button>
+          <NotificationBell />
 
           <ThemeToggle />
         </div>

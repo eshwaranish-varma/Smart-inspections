@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import WorkflowDraftWorkspace from "@/components/workflow/WorkflowDraftWorkspace";
 
+export const dynamic = "force-dynamic";
+
 export default function WorkflowDraftPage() {
   return (
     <Suspense

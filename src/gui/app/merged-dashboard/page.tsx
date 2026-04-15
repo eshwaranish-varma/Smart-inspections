@@ -4,7 +4,9 @@ import { useMemo } from "react";
 
 export default function MergedDashboardPage() {
   const targetUrl = useMemo(
-    () => process.env.NEXT_PUBLIC_MERGED_DASHBOARD_URL || "http://localhost:5173/dashboard",
+    () =>
+      process.env.NEXT_PUBLIC_MERGED_DASHBOARD_URL ||
+      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard`,
     []
   );
 
@@ -36,12 +38,12 @@ export default function MergedDashboardPage() {
             fontWeight: 600,
           }}
         >
-          Open 5173 in new tab
+          Open dashboard in new tab
         </a>
       </div>
       <iframe
         src={targetUrl}
-        title="Merged 5173 Dashboard"
+        title="Embedded dashboard"
         style={{ width: "100%", height: "calc(100vh - 52px)", border: "none" }}
       />
     </div>

@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import WorkflowDraftWorkspace from "@/components/workflow/WorkflowDraftWorkspace";
 
+export const dynamic = "force-dynamic";
+
 type PageProps = {
   searchParams: Promise<{ inspectionId?: string; phase?: string }>;
 };

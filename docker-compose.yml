@@ -44,7 +44,7 @@ services:
     environment:
       # Set in `.env` — Supabase URI with ?sslmode=require, or postgresql://postgres:postgres@db:5432/smart_inspections with --profile local-db
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost,http://127.0.0.1}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost,http://127.0.0.1}
       DATA_DIR: /app/data
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -82,27 +82,6 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    restart: unless-stopped
-    logging: *default-logging
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api}
-    container_name: smart-frontend
-    ports:
-      - "${VITE_PORT:-5173}:80"
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
     restart: unless-stopped
     logging: *default-logging
 

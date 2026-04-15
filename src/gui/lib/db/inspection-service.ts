@@ -352,6 +352,9 @@ export async function transitionStatus(
   await logWorkflowAction(inspectionId, action, performedBy, comments, current.status, newStatus);
   await maybeSnapshotVersion(updated, performedBy, action, comments);
   await maybeCreateStatusNotifications(current, updated, action, performedBy, comments);
+  if (newStatus === "closed") {
+    await syncFastApiSavedDocumentsArchived(inspectionId, updated.metadata_json);
+  }
   return updated;
 }
 
@@ -1036,6 +1039,38 @@ export async function reopenApprovedDocumentForNextYear(
   return inspection;
 }
 
+/**
+ * Marks FastAPI `saved_documents` rows as approved so the Document Library "active drafts"
+ * list stays aligned with workflow archival. Best-effort (logs on failure).
+ */
+async function syncFastApiSavedDocumentsArchived(inspectionId: string, metadataJson: string | null): Promise<void> {
+  let fei: string | null = null;
+  try {
+    const m = JSON.parse(metadataJson || "{}") as { fei_number?: unknown };
+    if (typeof m.fei_number === "string" && m.fei_number.trim()) fei = m.fei_number.trim();
+  } catch {
+    /* ignore */
+  }
+  const raw =
+    process.env.NEXT_PUBLIC_API_URL?.trim() ||
+    process.env.API_URL?.trim() ||
+    "http://localhost:8000";
+  const base = raw.replace(/\/$/, "");
+  try {
+    const res = await fetch(`${base}/api/library/complete-inspection`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ inspection_id: inspectionId, fei_number: fei }),
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      console.warn("[syncFastApiSavedDocumentsArchived] FastAPI error", res.status, t);
+    }
+  } catch (e) {
+    console.warn("[syncFastApiSavedDocumentsArchived] request failed:", e);
+  }
+}
+
 async function publishInspectionToLibrary(inspectionId: string, supervisorId: string) {
   const inspection = await getInspectionById(inspectionId);
   if (!inspection) return;
@@ -1098,6 +1133,7 @@ async function publishInspectionToLibrary(inspectionId: string, supervisorId: st
     inspection.status,
     inspection.status
   );
+  await syncFastApiSavedDocumentsArchived(inspectionId, inspection.metadata_json);
 }
 
 async function maybeSnapshotVersion(

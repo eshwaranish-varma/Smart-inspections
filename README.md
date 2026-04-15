@@ -30,7 +30,7 @@
 
 ## System Architecture
 
-The repository ships **three runnable clients** and **one AI/API backend**:
+The repository ships **one web client** (Next.js) and **one AI/API backend** (FastAPI):
 
 ```text
 ┌─────────────────────────┐     HTTP (browser)      ┌──────────────────────────────┐
@@ -38,12 +38,12 @@ The repository ships **three runnable clients** and **one AI/API backend**:
 │  (dashboard, workflow)  │                         │  /api/* → Postgres (Supabase) │
 └─────────────────────────┘                         └──────────────────────────────┘
          │                                                    │
-         │  Same machine: Vite + FastAPI                      │
+         │  Server routes & browser calls                     │
          ▼                                                    ▼
-┌─────────────────────────┐     HTTP /api/*         ┌──────────────────────────────┐
-│  Vite React :5173       │ ───────────────────────►│  FastAPI :8000               │
-│  (inspection drafting)  │   VITE_API_URL          │  AI, OCR, documents, library │
-└─────────────────────────┘                         └──────────────────────────────┘
+                                                    ┌──────────────────────────────┐
+                                                    │  FastAPI :8000              │
+                                                    │  AI, OCR, documents, library │
+                                                    └──────────────────────────────┘
                                                               │
                                                               ▼
                                                     ┌──────────────────────────┐
@@ -53,8 +53,7 @@ The repository ships **three runnable clients** and **one AI/API backend**:
                                                     └──────────────────────────┘
 ```
 
-- **Next.js (`src/gui`)** — Landing, authentication, **eNSpect-style workflow** (`/workflow`, library, notifications). **Route handlers** `/api/`* read and write **PostgreSQL** (users, inspections, workflow, versions, document library). Flexible payloads live in **JSON** columns.
-- **Vite (`frontend`)** — Inspection drafting UI: observations, OCR, AI calls, document generation; calls **FastAPI** at `VITE_API_URL` (e.g. `http://localhost:8000/api`).
+- **Next.js (`src/gui`)** — Landing, authentication, **workflow** (`/workflow`, library, notifications), drafting and evaluation UIs. **Route handlers** `/api/*` read and write **PostgreSQL** (users, inspections, workflow, versions, document library) and forward some requests to **FastAPI** where configured (`BACKEND_API_URL`).
 - **FastAPI (`backend`)** — **REST** under `/api/...`: observations (incl. FY2025 Excel), AI, OCR, `.docx` generation, **saved document library** and **audit** via **SQLAlchemy** into **PostgreSQL** (`DATABASE_URL`).
 
 **Persistence:** The system uses **PostgreSQL** as the database engine. **Supabase** is the recommended setup: create a project, copy the **database connection URI** from **Project Settings → Database**, and set it as **`DATABASE_URL`** for **both** the Next.js app and FastAPI so workflow data, **`ai_runs`**, and FastAPI pipeline tables share **one database**. Local Postgres or Docker `local-db` also work; see Environment Variables.
@@ -71,15 +70,12 @@ The repository ships **three runnable clients** and **one AI/API backend**:
 
 This section ties together **where requests go**, what **Next.js middleware** does, how **text reaches the LLM**, how **RAG** is used, and how **Form FDA 483 observations** are drafted with **Title 21 CFR** citation matching.
 
-### 1. Three application surfaces
+### 1. Application surfaces
 
 | Surface | Role | Typical traffic |
 | -------- | ------ | ---------------- |
-| **Next.js GUI** (`src/gui`, port 3000) | Auth, workflow, inspections, document routes, evaluation dashboards | Browser → pages; **same-origin** `/api/*` **Route Handlers** talk to PostgreSQL and optionally **proxy to FastAPI** (e.g. `generate-483`). |
-| **Vite app** (`frontend`, port 5173) | Alternate inspection drafting UI | Browser → `VITE_API_URL` → FastAPI `/api/...` |
+| **Next.js GUI** (`src/gui`, port 3000) | Auth, workflow, inspections, document routes, evaluation dashboards, drafting | Browser → pages; **same-origin** `/api/*` **Route Handlers** talk to PostgreSQL and **proxy or call FastAPI** where needed (see `BACKEND_API_URL`). |
 | **FastAPI** (`backend`, port 8000) | OCR, AI generation, citations, documents, evaluation APIs | HTTP JSON; uses `DATA_DIR`, LLM keys, optional DB for pipeline logging |
-
-Both UIs can coexist; workflow-heavy features often live in Next.js, while the Vite bundle is the classic drafting shell described elsewhere in this README.
 
 ### 2. Reverse proxy and “which `/api` is which?”
 
@@ -92,11 +88,11 @@ When you use **Docker Compose + NGINX** (`docker/nginx/smart.conf`), a single ho
 
 Additional FastAPI routers (for example `/api/eir-pipeline`) exist on the backend; if you need them **through NGINX on port 80**, add their prefix to the same location block in `docker/nginx/smart.conf` (or call **`http://<host>:8000`** directly in development).
 
-That avoids sending FastAPI-only routes to the Next server and vice versa. Direct dev URLs (`localhost:3000`, `localhost:8000`) skip NGINX; you point the browser or `VITE_API_URL` at the right port.
+That avoids sending FastAPI-only routes to the Next server and vice versa. Direct dev URLs (`localhost:3000`, `localhost:8000`) skip NGINX.
 
-### 3. Next.js middleware (not NGINX)
+### 3. Next.js proxy (session refresh, not NGINX)
 
-The root `src/gui/middleware.ts` runs on the **Edge** for most routes. It calls `updateSession` from `src/gui/utils/supabase/middleware.ts`:
+The root `src/gui/proxy.ts` runs for most routes. It calls `updateSession` from `src/gui/utils/supabase/middleware.ts`:
 
 - If **`NEXT_PUBLIC_SUPABASE_URL`** and a Supabase anon/publishable key are set, it creates a server Supabase client, reads cookies, and runs **`supabase.auth.getUser()`** so **session cookies stay fresh** on navigation.
 - If Supabase env is **not** configured, it **passes through**; the app may rely on other auth (e.g. JWT from `/api/auth/login`).
@@ -199,8 +195,7 @@ raw_notes (+ optional refinement_feedback)
 
 | Layer             | Technologies                                                                                                                      |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Next.js GUI**   | Next.js **16**, React **18**, TypeScript, Tailwind CSS, App Router, Route Handlers (`src/gui/app/api/`**), `pg` driver.           |
-| **Vite frontend** | Vite **5**, React **18**, TypeScript, Tailwind, TanStack Query, Axios.                                                            |
+| **Next.js GUI**   | Next.js **16**, React **18**, TypeScript, Tailwind CSS, App Router, Route Handlers (`src/gui/app/api/`), TanStack Query, `pg` driver. |
 | **Backend**       | Python **3.11**, **FastAPI**, Uvicorn, **SQLAlchemy 2**, Pydantic Settings, **psycopg2** (PostgreSQL).                            |
 | **Database**      | **PostgreSQL** (commonly **Supabase**): users, inspections, workflow, notifications, document library, FastAPI `saved_documents` / `audit_log`, pipeline logging.          |
 | **AI**            | LangChain, **langchain-google-genai** / **langchain-openai**, **FAISS** + OpenAI embeddings (knowledge retrieval), tiktoken.      |
@@ -220,10 +215,7 @@ backend/                 # FastAPI app — AI, OCR, documents, observations API
   app/services/          # AI, OCR, knowledge base, documents, citations
   Dockerfile
 
-frontend/                # Vite + React inspection UI (port 5173)
-  src/
-
-src/gui/                 # Next.js dashboard + workflow (port 3000)
+src/gui/                 # Next.js app — dashboard, workflow, drafting (port 3000)
   app/                   # Pages + Route Handlers (/api/auth/*, /api/inspections/*, …)
   lib/db/                # PostgreSQL access, inspection-service, schema.sql
   components/
@@ -231,7 +223,7 @@ src/gui/                 # Next.js dashboard + workflow (port 3000)
 data/                    # IOM PDFs, templates, FY2025 Excel, rulebook JSONL (KB & API inputs)
 artifacts/               # Generated RAG JSONL (offline KB build pipeline)
 
-docker-compose.yml       # PostgreSQL + FastAPI + Next.js + Vite + NGINX
+docker-compose.yml       # PostgreSQL + FastAPI + Next.js + NGINX
 docker/nginx/smart.conf  # NGINX reverse proxy (single entry on host port NGINX_PORT)
 
 tests/                   # Pytest layout
@@ -256,12 +248,6 @@ scripts/                 # e.g. prepare_iom_rag_jsonl.py — offline KB / RAG JS
 | **Settings**              | `/settings`                                                                                            |
 | **Alternate embedded UI** | `/smart-inspections` (self-contained JSX flow)                                                         |
 
-
-### Vite app (port 5173)
-
-React Router routes (see `frontend/src/App.tsx`): `/dashboard`, `/new-inspection`, `/observations`, `/library`, `/references`, `/audit-trail`, `/settings`, `/document/483/:id`.
-
----
 
 ## Database Overview (PostgreSQL on Supabase)
 
@@ -291,7 +277,7 @@ The app stores relational data in **PostgreSQL**. In practice teams use **[Supab
 
 | Table               | Purpose                                         |
 | ------------------- | ----------------------------------------------- |
-| **saved_documents** | Saved Form 483–style drafts from the Vite path. |
+| **saved_documents** | Saved Form 483–style drafts from drafting flows. |
 | **audit_log**       | Audit entries for backend actions.              |
 
 
@@ -301,12 +287,12 @@ DDL reference: `src/gui/lib/db/schema.sql`. For existing databases created befor
 
 ## Workflow (End-to-End)
 
-Typical path combining **Vite + FastAPI** drafting with **Next.js** governance:
+Typical path combining **Next.js** workflow with **FastAPI** drafting:
 
 1. **Sign in** (Next.js GUI) — JWT session after email verification where required.
 2. **Create inspection** — metadata and firm details stored in PostgreSQL.
 3. **Assign** — supervisor assigns to an investigator (role-gated APIs).
-4. **Investigator works** — may use **Vite app** to upload files, run **OCR**, call **AI** endpoints, edit observations/EIR JSON.
+4. **Investigator works** — upload files, run **OCR**, call **AI** endpoints, edit observations/EIR JSON in the Next.js app.
 5. **Draft milestones** — status moves through e.g. *in progress* → *draft completed* → *EIR submitted* (exact labels depend on implementation).
 6. **Submit for review** — transitions to *under review*; **notifications** may fire.
 7. **Supervisor review** — comments, **approve** or **rework**; **electronic signature** capture when required by the flow.
@@ -335,7 +321,7 @@ Compose loads a `**.env`** file in the repository root (same directory as `docke
 
 **Database — local Postgres in Docker (optional):** Run `docker compose --profile local-db up --build` and set `DATABASE_URL=postgresql://postgres:postgres@db:5432/smart_inspections` (matching `POSTGRES_*` in `.env` if you override them).
 
-**Next.js → FastAPI in Docker:** Set **`BACKEND_API_URL=http://backend:8000`** in `.env` so server-side route handlers call FastAPI by Docker service name (the default in Compose). For a public HTTPS site, set **`NEXT_PUBLIC_APP_URL`**, **`CORS_ORIGINS`**, and rebuild if you change **`VITE_API_URL`**.
+**Next.js → FastAPI in Docker:** Set **`BACKEND_API_URL=http://backend:8000`** in `.env` so server-side route handlers call FastAPI by Docker service name (the default in Compose). For a public HTTPS site, set **`NEXT_PUBLIC_APP_URL`** and **`CORS_ORIGINS`** to your real origins.
 
 From the **repository root**:
 
@@ -351,12 +337,11 @@ docker compose up --build
 | ------------ | -------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | **nginx**    | **80** (`NGINX_PORT`)      | Single entry: Next.js UI + `/api/*` split between FastAPI and Next route handlers (see `docker/nginx/smart.conf`) |
 | **gui**      | **3000** (`GUI_PORT`)      | Next.js (direct access; also behind NGINX)                                                                        |
-| **frontend** | **5173** (`VITE_PORT`)     | Vite static build (nginx) — inspection drafting UI                                                                |
 | **backend**  | **8000** (`BACKEND_PORT`)  | FastAPI (`/docs` for Swagger)                                                                                     |
 | **db**       | **5432** (`POSTGRES_PORT`) | PostgreSQL — only with **`docker compose --profile local-db`**                                                    |
 
 
-**How traffic is split (NGINX on port 80):** Paths matching `/api/(observations|ai|documents|ocr|library|citations|references|health)` go to **FastAPI**. All other `**/api/*`** requests go to **Next.js** route handlers. The **Vite** app does not use NGINX by default; it calls **FastAPI** using `**VITE_API_URL`** (baked at `docker compose build` time). Use `**http://localhost:8000/api**` when FastAPI is exposed on the host, or `**http://localhost/api**` if you point the browser at NGINX and want FastAPI under the same origin (set `VITE_API_URL` accordingly and rebuild).
+**How traffic is split (NGINX on port 80):** Paths matching `/api/(observations|ai|documents|ocr|library|citations|references|health|eval|evaluation)` go to **FastAPI**. All other `**/api/*`** requests go to **Next.js** route handlers. Use **`http://localhost:8000`** for direct FastAPI access, or **`http://localhost`** (NGINX) for a single origin.
 
 **Environment:** **`DATABASE_URL`** is required in `.env` (Supabase or `@db` when using **`local-db`** profile). **CORS** defaults include `http://localhost` for NGINX; add your production origin. **LLM keys** are passed into the backend from the root `.env` (`GOOGLE_API_KEY`, `OPENAI_API_KEY`).
 
@@ -374,7 +359,7 @@ docker compose up --build
 
 ### Option 2: Manual (development)
 
-Create **one** environment file at the **repository root** (same as Docker): copy `**.env.example`** to `**.env**` and set `DATABASE_URL` to use `localhost` for Postgres on your machine. FastAPI, Next.js, and Vite are wired to read that file.
+Create **one** environment file at the **repository root** (same as Docker): copy `**.env.example`** to `**.env**` and set `DATABASE_URL` to use `localhost` for Postgres on your machine. FastAPI and Next.js are wired to read that file.
 
 **Backend**
 
@@ -398,19 +383,20 @@ npm run dev                     # uses Next 16 with --webpack (see package.json)
 
 Interactive API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
+**Vercel:** Set the project **Root Directory** to `src/gui` (recommended) and configure environment variables from `.env.example` (`DATABASE_URL`, `JWT_SECRET`, `NEXT_PUBLIC_APP_URL`, `BACKEND_API_URL`, optional Supabase keys). Alternatively, keep the repository root as the Vercel root and use the root `vercel.json` `installCommand` / `buildCommand` that `cd` into `src/gui`.
+
 ---
 
 ## Environment Variables
 
-Use the **repository root** `**.env.example`** as the template. Copy it to `**.env**` (gitignored) and fill in secrets. **Docker Compose** reads that `.env` automatically; local **FastAPI** loads `<repo>/.env` and optionally `<repo>/backend/.env` for overrides; **Next.js** (`src/gui`) loads the root `.env` via `next.config.js`; **Vite** reads `VITE_*` from the root `.env` via `envDir` in `vite.config.ts`.
+Use the **repository root** `**.env.example`** as the template. Copy it to `**.env**` (gitignored) and fill in secrets. **Docker Compose** reads that `.env` automatically; local **FastAPI** loads `<repo>/.env` and optionally `<repo>/backend/.env` for overrides; **Next.js** (`src/gui`) loads the root `.env` via `next.config.js` (and `src/gui/.env.local` when present).
 
 
 | Variable / group                                                                                                                     | Used by                | Purpose                                                                                                                     |
 | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `POSTGRES_*`, `DATABASE_URL`, `BACKEND_API_URL`, port vars                                                                              | Compose, FastAPI, Next | **`DATABASE_URL`** required (Supabase or `...@db:5432/...` with **`local-db`** profile). **`BACKEND_API_URL`** for Next server → FastAPI in Compose (default `http://backend:8000`). |
 | `DATA_DIR`, `CORS_ORIGINS`, `TITLE21_CSV_PATH`, `LLM_PROVIDER`, model vars, `GOOGLE_API_KEY`, `OPENAI_API_KEY`, `OPENAI_TEMPERATURE` | FastAPI                | API behavior, LLM keys, data paths                                                                                          |
-| `JWT_*`, `SMTP_*`, `EMAIL_FROM`, `NEXT_PUBLIC_APP_URL`                                                                               | Next.js                | Sessions, email OTP, public URL                                                                                             |
-| `VITE_API_URL`                                                                                                                       | Vite (build / dev)     | Browser base URL for FastAPI (`VITE_*` only)                                                                                |
+| `JWT_*`, `SMTP_*`, `EMAIL_FROM`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_*`                             | Next.js                | Sessions, email OTP, public URL, optional Supabase client, optional browser API base                                         |
 | `DB_HOST` … `DB_PASSWORD`                                                                                                            | Next (legacy)          | Optional split DB vars if a code path still expects them when `DATABASE_URL` is absent                                      |
 
 

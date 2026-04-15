@@ -118,6 +118,13 @@ export default function EvaluationPage() {
     void loadLibrary();
   }, [loadLibrary]);
 
+  /** Deep link: /evaluation?inspection_id=… (e.g. from workflow). */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const q = new URLSearchParams(window.location.search).get("inspection_id")?.trim();
+    if (q) setSelectedId(q);
+  }, []);
+
   const dropdownInspections = useMemo(
     () => mergeDropdownOptions(publishedRows, readyRows),
     [publishedRows, readyRows]

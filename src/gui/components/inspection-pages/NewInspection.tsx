@@ -693,6 +693,7 @@ export default function NewInspection({
     observation_count: observations.length,
     document_type: documentType,
     status: 'draft',
+    ...(workflowInspectionId ? { inspection_id: workflowInspectionId } : {}),
     metadata,
     observations,
   });
@@ -1695,11 +1696,11 @@ export default function NewInspection({
               </div>
             </div>
 
-            {/* Document Review Workspace — matches workflow inspection preview */}
+            {/* Document preview — matches workflow inspection preview */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-800">Document Review Workspace</h3>
+                  <h3 className="text-sm font-semibold text-gray-800">Document preview</h3>
                   <p className="mt-1 text-xs text-gray-500">
                     Page-style preview before download.
                     {blockEirUntilEirDrafting

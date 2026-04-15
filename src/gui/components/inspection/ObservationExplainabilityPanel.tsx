@@ -218,9 +218,9 @@ export default function ObservationExplainabilityPanel({
                     {chunk.score != null && (
                       <span className="ml-2 text-slate-400 tabular-nums">score: {Number(chunk.score).toFixed(3)}</span>
                     )}
-                    {chunk.text && (
+                    {chunk.text != null && String(chunk.text).trim() !== "" ? (
                       <p className="mt-1 line-clamp-3 text-slate-600 dark:text-slate-400">{String(chunk.text)}</p>
-                    )}
+                    ) : null}
                   </li>
                 ))}
               </ul>

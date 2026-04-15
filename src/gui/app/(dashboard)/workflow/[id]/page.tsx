@@ -634,7 +634,7 @@ export default function InspectionDetailPage() {
           <div>
             <p className="text-sm font-semibold text-gray-900">AI evaluation & review</p>
             <p className="text-xs text-gray-500">
-              Drafting-quality scores (CFR match, grounding, structure), validation review, document workspace, and audit trail for this inspection.
+              Drafting-quality scores (CFR match, grounding, structure), validation review, and audit trail for this inspection.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -656,12 +656,6 @@ export default function InspectionDetailPage() {
               className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
             >
               AI validation review
-            </Link>
-            <Link
-              href={`/workflow/${encodeURIComponent(inspection.id)}/document-review`}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
-            >
-              Document review
             </Link>
             <Link
               href={`/workflow/${encodeURIComponent(inspection.id)}/audit`}
@@ -844,9 +838,9 @@ export default function InspectionDetailPage() {
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-gray-700">Document Review Workspace</h3>
+                <h3 className="text-sm font-semibold text-gray-700">Document preview</h3>
                 <p className="mt-1 text-xs text-gray-500">
-                  Page-view preview for investigator drafting and supervisor review.
+                  Page-style preview for investigator drafting and supervisor review.
                   {isFinalApproved && selectedVersionId && (
                     <span className="ml-1 font-medium text-navy-700"> Showing approved snapshot.</span>
                   )}

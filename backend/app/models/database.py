@@ -47,6 +47,8 @@ class SavedDocument(Base):
     metadata_json = Column(Text)
     document_type = Column(String(20), default="483")
     status = Column(String(20), default="draft")
+    """Links draft rows to Postgres workflow inspection UUID when saved from New Inspection / workflow."""
+    inspection_id = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -303,3 +305,16 @@ def init_db(engine: Engine) -> None:
     import app.models.pipeline_logging_models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    # Additive migration: existing DBs created before inspection_id on saved_documents.
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE saved_documents ADD COLUMN IF NOT EXISTS inspection_id VARCHAR(100)"
+                )
+            )
+    except Exception:
+        logger.warning(
+            "Could not ensure saved_documents.inspection_id column (non-fatal for KB-only mode)",
+            exc_info=True,
+        )

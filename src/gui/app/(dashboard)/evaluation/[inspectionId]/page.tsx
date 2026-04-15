@@ -19,7 +19,7 @@ export default function InspectionEvaluationDashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!allowed) return;
+    if (!inspectionId || !allowed) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -39,7 +39,7 @@ export default function InspectionEvaluationDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [inspectionId]);
+  }, [inspectionId, allowed]);
 
   if (guardLoading) {
     return (

@@ -25,6 +25,8 @@ import {
   Waypoints,
 } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 const footerLinks = [
   {
     heading: "Product",
