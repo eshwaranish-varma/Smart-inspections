@@ -1,6 +1,18 @@
 import Icon from "./Icon";
 
 export default function LandingView({ onLogin, onSignup }) {
+  const tractionSignals = [
+    { label: "Workflow wedge", value: "FDA 483 + EIR" },
+    { label: "AI moat", value: "CFR/IOM grounded" },
+    { label: "Buyer pain", value: "Manual casework" },
+  ];
+
+  const workflowSteps = [
+    { icon: "file", title: "Ingest evidence", text: "Notes, PDFs, photos, and scanned records enter one inspection workspace." },
+    { icon: "ai", title: "Draft with context", text: "OCR, RAG, and CFR matching turn messy findings into review-ready language." },
+    { icon: "shield", title: "Defend the record", text: "Every observation keeps citations, evidence links, signatures, and audit trail." },
+  ];
+
   return (
     <div className="landing">
       <nav className="landing-nav">
@@ -23,19 +35,31 @@ export default function LandingView({ onLogin, onSignup }) {
 
       <div className="hero">
         <div>
+          <div className="hero-kicker">
+            <Icon name="shield" size={14} /> AI for government-adjacent markets
+          </div>
           <div className="hero-title">
             Smart <span>Inspections</span>
           </div>
           <p className="hero-desc">
-            Transforming FDA inspection documentation through AI-assisted, CFR-aware drafting with traceable evidence and investigator-first review.
+            A vertical AI system for FDA inspection teams: convert raw evidence into defensible FDA 483 and EIR drafts with CFR grounding,
+            evidence traceability, supervisor review, signatures, and audit history.
           </p>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <div className="hero-actions">
             <button type="button" className="btn btn-primary" onClick={onSignup}>
-              Get Started
+              Start Demo Inspection
             </button>
             <button type="button" className="btn btn-secondary" onClick={onLogin}>
-              Learn More
+              Open Investigator Login
             </button>
+          </div>
+          <div className="traction-strip" aria-label="Startup positioning">
+            {tractionSignals.map((signal) => (
+              <div key={signal.label} className="traction-item">
+                <div className="traction-value">{signal.value}</div>
+                <div className="text-muted">{signal.label}</div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -61,6 +85,20 @@ export default function LandingView({ onLogin, onSignup }) {
           </div>
         </div>
       </div>
+
+      <section className="landing-workflow" aria-label="Hackathon product thesis">
+        {workflowSteps.map((step) => (
+          <article key={step.title} className="workflow-card">
+            <span className="workflow-icon">
+              <Icon name={step.icon} size={18} />
+            </span>
+            <div>
+              <h2>{step.title}</h2>
+              <p>{step.text}</p>
+            </div>
+          </article>
+        ))}
+      </section>
     </div>
   );
 }

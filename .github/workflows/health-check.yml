@@ -1,0 +1,68 @@
+name: Health Check & Monitoring
+
+on:
+  schedule:
+    # Run every 30 minutes
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    name: Production Health Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Backend Health
+        continue-on-error: true
+        run: |
+          echo "Checking backend API..."
+          curl -f -s https://smart-inspection-api.onrender.com/api/health || \
+            (echo "Backend health check failed" && exit 1)
+
+      - name: Check Frontend Health
+        continue-on-error: true
+        run: |
+          echo "Checking frontend..."
+          curl -f -s https://smart-inspection.vercel.app -I | head -n 1
+
+      - name: Check Database Connection
+        run: |
+          echo "Testing database connectivity..."
+          psql "${{ secrets.DATABASE_URL }}" -c "SELECT NOW();" || \
+            (echo "Database connection failed" && exit 1)
+        continue-on-error: true
+
+      - name: Check API Response Time
+        run: |
+          echo "Measuring API response time..."
+          TIME=$( { time curl -s https://smart-inspection-api.onrender.com/api/health > /dev/null; } 2>&1 | grep real | awk '{print $2}')
+          echo "Response time: $TIME"
+          
+          # Alert if response time > 3 seconds
+          SECONDS=$(echo $TIME | grep -o '[0-9]\+' | head -1)
+          if [ "$SECONDS" -gt 3 ]; then
+            echo "⚠ Slow API response detected"
+          fi
+
+      - name: Slack Notification
+        if: always()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "Health Check: ${{ job.status == 'success' && '✅ Passed' || '❌ Failed' }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Production Health Check*\n*Status:* ${{ job.status == 'success' && '✅ All Systems Operational' || '❌ Issues Detected' }}\n*Time:* <!date^${{ github.event.head_commit.timestamp }}^{date_pretty} {time_secs}|No date>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

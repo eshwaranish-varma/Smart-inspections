@@ -196,6 +196,7 @@ const ACTION_ICONS: Record<string, React.ElementType> = {
   COMMENT_ADDED: MessageSquare, DOCUMENT_READY: FileText, REOPENED_FOR_NEXT_YEAR: RotateCcw,
   APPROVED_483: CheckCircle2, SENT_483_TO_FIRM: Mail, EIR_ASSIGNED: UserPlus,
   EIR_DRAFTING_STARTED: FileText, EIR_REWORK_STARTED: RotateCcw,
+  ASSOCIATE_REASSIGNED: UserPlus,
   '483_RETURNED_FOR_REVISION': RotateCcw,
   WORKFLOW_ARCHIVED: Archive,
   WORKFLOW_RESTORED: RotateCcw,
@@ -229,8 +230,10 @@ export default function InspectionDetailPage() {
   const [showReturn483Modal, setShowReturn483Modal] = useState(false);
   const [return483Comments, setReturn483Comments] = useState('');
   const [showAssignEirModal, setShowAssignEirModal] = useState(false);
+  const [showEditAssociateModal, setShowEditAssociateModal] = useState(false);
   const [investigators, setInvestigators] = useState<{ id: string; first_name: string; last_name: string; email: string }[]>([]);
   const [assignToId, setAssignToId] = useState('');
+  const [associateAssignToId, setAssociateAssignToId] = useState('');
   const [pipelineEirLoading, setPipelineEirLoading] = useState(false);
   const [companyHistory, setCompanyHistory] = useState<{ inspection_id: string; title: string; investigator_name: string | null; year: string; status: string }[]>([]);
   const [archiveActionLoading, setArchiveActionLoading] = useState(false);
@@ -420,13 +423,44 @@ export default function InspectionDetailPage() {
     }
   }
 
+  async function handleEditAssociateConfirm() {
+    if (!associateAssignToId) {
+      toast.error('Select an associate investigator');
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/inspections/${id}/reassign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          assignedTo: associateAssignToId,
+          comments: 'Associate investigator updated by supervisor',
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(typeof data.error === 'string' ? data.error : 'Could not update associate investigator');
+        return;
+      }
+      toast.success('Associate investigator updated');
+      setShowEditAssociateModal(false);
+      setAssociateAssignToId('');
+      await loadData();
+      queryClient.invalidateQueries({ queryKey: dashboardPublishStatsQueryKey });
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   useEffect(() => {
-    if (!showAssignEirModal || !isSupervisor) return;
+    if ((!showAssignEirModal && !showEditAssociateModal) || !isSupervisor) return;
     fetch('/api/users/investigators', { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => setInvestigators(d.investigators || []))
       .catch(() => setInvestigators([]));
-  }, [showAssignEirModal, isSupervisor]);
+  }, [showAssignEirModal, showEditAssociateModal, isSupervisor]);
 
   async function handleAddComment() {
     if (!commentDraft.trim()) return;
@@ -498,6 +532,11 @@ export default function InspectionDetailPage() {
       status,
     );
   const isFinalApproved = status === 'approved' || status === 'eir_approved' || status === 'closed';
+  const canEditAssociate =
+    isSupervisor &&
+    Boolean(inspection.assigned_to) &&
+    !isWorkflowArchived &&
+    !['approved', 'eir_approved', 'closed'].includes(status);
   const currentStepIndex = WORKFLOW_STEPS.indexOf(status);
   const currentPayload = (() => {
     if (selectedVersionId) {
@@ -897,7 +936,25 @@ export default function InspectionDetailPage() {
               <div><p className="text-gray-400">District Office</p><p className="font-medium text-gray-900">{inspection.district_office || '—'}</p></div>
               <div><p className="text-gray-400">Establishment Type</p><p className="font-medium text-gray-900">{inspection.establishment_type || '—'}</p></div>
               <div><p className="text-gray-400">Dates</p><p className="font-medium text-gray-900">{inspection.inspection_start || '—'} to {inspection.inspection_end || '—'}</p></div>
-              <div><p className="text-gray-400">Assigned To</p><p className="font-medium text-gray-900">{inspection.assignee_name || 'Unassigned'}</p></div>
+              <div>
+                <p className="text-gray-400">Associate Investigator</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-gray-900">{inspection.assignee_name || 'Unassigned'}</p>
+                  {canEditAssociate && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAssociateAssignToId(inspection.assigned_to || '');
+                        setShowEditAssociateModal(true);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-md border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-800 hover:bg-cyan-100"
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      Edit Associate
+                    </button>
+                  )}
+                </div>
+              </div>
               <div><p className="text-gray-400">Created By</p><p className="font-medium text-gray-900">{inspection.creator_name}</p></div>
               <div><p className="text-gray-400">Created</p><p className="font-medium text-gray-900">{new Date(inspection.created_at).toLocaleDateString()}</p></div>
             </div>
@@ -1482,6 +1539,49 @@ export default function InspectionDetailPage() {
             <div className="mt-4 flex justify-end gap-3">
               <button type="button" onClick={() => { setShowAssignEirModal(false); setAssignToId(''); }} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
               <button type="button" onClick={handleAssignEirConfirm} disabled={actionLoading} className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-800 disabled:opacity-50">Assign</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditAssociateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="text-lg font-bold text-gray-900 mb-2">Edit Associate Investigator</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Select the associate investigator who should take over this FDA 483 or EIR assignment.
+            </p>
+            <select
+              value={associateAssignToId}
+              onChange={(e) => setAssociateAssignToId(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-navy-500 focus:ring-1 focus:ring-navy-500 outline-none"
+            >
+              <option value="">- Select associate investigator -</option>
+              {investigators.map((inv) => (
+                <option key={inv.id} value={inv.id}>
+                  {inv.first_name} {inv.last_name} ({inv.email})
+                </option>
+              ))}
+            </select>
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditAssociateModal(false);
+                  setAssociateAssignToId('');
+                }}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleEditAssociateConfirm}
+                disabled={actionLoading || !associateAssignToId || associateAssignToId === inspection.assigned_to}
+                className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-800 disabled:opacity-50"
+              >
+                Save Associate
+              </button>
             </div>
           </div>
         </div>

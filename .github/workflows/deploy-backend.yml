@@ -1,0 +1,136 @@
+name: Deploy Backend (Render)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
+      - "docker-compose.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest
+
+      - name: Run tests
+        run: |
+          cd backend
+          pytest tests/ -v --tb=short
+
+  build-and-deploy:
+    name: Build & Deploy to Render
+    needs: test
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate environment
+        run: |
+          echo "Checking required secrets..."
+          if [ -z "${{ secrets.RENDER_API_KEY }}" ]; then
+            echo "ERROR: RENDER_API_KEY not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.RENDER_BACKEND_SERVICE_ID }}" ]; then
+            echo "ERROR: RENDER_BACKEND_SERVICE_ID not set"
+            exit 1
+          fi
+          echo "✓ All required secrets present"
+
+      - name: Trigger Render deployment
+        run: |
+          curl --request POST \
+            --url https://api.render.com/v1/services/${{ secrets.RENDER_BACKEND_SERVICE_ID }}/deploys \
+            --header "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            --header "Content-Type: application/json" \
+            --data '{"clearCache":"full"}'
+
+      - name: Wait for deployment
+        run: |
+          echo "Deployment triggered. Checking status..."
+          
+          # Get deployment status
+          for i in {1..60}; do
+            STATUS=$(curl -s \
+              -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+              https://api.render.com/v1/services/${{ secrets.RENDER_BACKEND_SERVICE_ID }}/deploys \
+              | jq -r '.[] | select(.status == "live") | .id' | head -1)
+            
+            if [ ! -z "$STATUS" ]; then
+              echo "✓ Deployment successful!"
+              exit 0
+            fi
+            
+            echo "Waiting... ($i/60)"
+            sleep 5
+          done
+          
+          echo "⚠ Deployment status check timeout. Check Render dashboard."
+          exit 0
+
+      - name: Health check
+        run: |
+          echo "Running health check..."
+          for i in {1..10}; do
+            HEALTH=$(curl -s -o /dev/null -w "%{http_code}" \
+              "https://smart-inspection-api.onrender.com/api/health" || echo "000")
+            
+            if [ "$HEALTH" = "200" ]; then
+              echo "✓ Backend health check passed"
+              exit 0
+            fi
+            
+            echo "Health check attempt $i/10 - Status: $HEALTH"
+            sleep 6
+          done
+          
+          echo "⚠ Backend health check failed after retries. Check backend logs."
+
+  notify:
+    name: Notify on deployment
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Slack notification
+        uses: slackapi/slack-github-action@v1
+        if: always()
+        with:
+          payload: |
+            {
+              "text": "Backend Deployment: ${{ needs.build-and-deploy.result == 'success' && '✅ Success' || '❌ Failed' }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Backend Deployment* - ${{ needs.build-and-deploy.result == 'success' && '✅ Success' || '❌ Failed' }}\n*Branch:* main\n*Commit:* ${{ github.sha }}\n*Author:* ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

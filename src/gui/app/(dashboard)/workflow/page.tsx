@@ -96,6 +96,7 @@ export default function WorkflowPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState<string | null>(null);
+  const [assignModalMode, setAssignModalMode] = useState<'assign' | 'reassign'>('assign');
   const [creating, setCreating] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -120,6 +121,15 @@ export default function WorkflowPage() {
   });
 
   const isSupervisor = profile?.role === 'supervisor';
+
+  function canEditAssociate(insp: Inspection): boolean {
+    return Boolean(
+      isSupervisor &&
+      supervisorListTab === 'active' &&
+      insp.assigned_to &&
+      !['approved', 'eir_approved', 'closed'].includes(insp.status)
+    );
+  }
 
   const loadData = useCallback(async () => {
     setLoadError(null);
@@ -215,8 +225,9 @@ export default function WorkflowPage() {
     }
   }
 
-  function openAssignModal(inspectionId: string) {
+  function openAssignModal(inspectionId: string, mode: 'assign' | 'reassign' = 'assign') {
     setShowAssignModal(inspectionId);
+    setAssignModalMode(mode);
     setSuggestions([]);
     const insp = inspections.find(i => i.id === inspectionId);
     if (insp?.firm_name) {
@@ -232,16 +243,24 @@ export default function WorkflowPage() {
   async function handleAssign(inspectionId: string, investigatorId: string) {
     setAssigning(true);
     try {
-      const res = await fetch(`/api/inspections/${inspectionId}/assign`, {
+      const endpoint = assignModalMode === 'reassign' ? 'reassign' : 'assign';
+      const res = await fetch(`/api/inspections/${inspectionId}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ assignedTo: investigatorId }),
+        body: JSON.stringify({
+          assignedTo: investigatorId,
+          comments: assignModalMode === 'reassign' ? 'Associate investigator updated by supervisor' : undefined,
+        }),
       });
       if (res.ok) {
         setShowAssignModal(null);
+        setAssignModalMode('assign');
         await loadData();
         queryClient.invalidateQueries({ queryKey: dashboardPublishStatsQueryKey });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        window.alert(typeof data.error === 'string' ? data.error : 'Could not update investigator assignment.');
       }
     } finally { setAssigning(false); }
   }
@@ -399,7 +418,7 @@ export default function WorkflowPage() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Firm / FEI</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Workflow</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Assigned To</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Associate Investigator</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Updated</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Actions</th>
               </tr>
@@ -425,7 +444,20 @@ export default function WorkflowPage() {
                     )}
                   </td>
                   <td className="px-4 py-3"><StatusBadge status={insp.status} /></td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{insp.assignee_name || '—'}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-sm text-gray-700">{insp.assignee_name || 'Unassigned'}</span>
+                      {canEditAssociate(insp) && (
+                        <button
+                          type="button"
+                          onClick={() => openAssignModal(insp.id, 'reassign')}
+                          className="w-fit rounded-md border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-800 transition-colors hover:bg-cyan-100"
+                        >
+                          Edit Associate
+                        </button>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-xs text-gray-500">
                     {new Date(insp.updated_at).toLocaleDateString()}
                   </td>
@@ -553,7 +585,14 @@ export default function WorkflowPage() {
       {showAssignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Assign Investigator</h2>
+            <h2 className="text-lg font-bold text-gray-900 mb-2">
+              {assignModalMode === 'reassign' ? 'Edit Associate Investigator' : 'Assign Investigator'}
+            </h2>
+            <p className="mb-4 text-sm text-gray-500">
+              {assignModalMode === 'reassign'
+                ? 'Select the associate investigator who should take over this FDA 483 or EIR assignment.'
+                : 'Select the investigator for this assignment.'}
+            </p>
 
             {/* Suggestions based on company history */}
             {suggestionsLoading && (
@@ -644,7 +683,7 @@ export default function WorkflowPage() {
               )}
             </div>
             <div className="mt-4 flex justify-end">
-              <button onClick={() => setShowAssignModal(null)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={() => { setShowAssignModal(null); setAssignModalMode('assign'); }} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
             </div>
           </div>
         </div>

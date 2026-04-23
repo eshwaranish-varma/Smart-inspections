@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>How grounding works — evaluation flow</title>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --card: #ffffff;
+      --text: #1a1d26;
+      --muted: #5c6370;
+      --line: #e2e5eb;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --success: #059669;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 2.5rem 1.25rem 3rem;
+    }
+
+    .wrap {
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.5rem;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: var(--muted);
+      max-width: 28rem;
+      margin: 0 auto;
+    }
+
+    .flow {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+    }
+
+    .step {
+      position: relative;
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 1rem 1.15rem;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--line);
+    }
+
+    .step + .step {
+      margin-top: 1.5rem;
+    }
+
+    /* connector between steps */
+    .step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -1.5rem;
+      width: 2px;
+      height: 1.5rem;
+      background: var(--line);
+      transform: translateX(-50%);
+    }
+
+    .step-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      margin-bottom: 0.35rem;
+    }
+
+    .step h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 0 0.4rem;
+    }
+
+    .step p {
+      margin: 0;
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+
+    .branch {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: var(--accent-soft);
+      border-radius: var(--radius);
+      border: 1px solid #bfdbfe;
+    }
+
+    .branch-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    @media (max-width: 480px) {
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .mini {
+      background: var(--card);
+      border-radius: 8px;
+      padding: 0.65rem 0.75rem;
+      font-size: 0.8rem;
+      border: 1px solid var(--line);
+    }
+
+    .mini strong {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--text);
+      margin-bottom: 0.2rem;
+    }
+
+    .mini span {
+      color: var(--muted);
+    }
+
+    .outcome {
+      margin-top: 1.5rem;
+      text-align: center;
+      padding: 1rem;
+      background: var(--card);
+      border-radius: var(--radius);
+      border: 1px dashed var(--success);
+    }
+
+    .outcome .step-label {
+      color: var(--success);
+    }
+
+    footer {
+      margin-top: 2rem;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>From inspection notes to evaluation scores</h1>
+      <p class="subtitle">
+        A simple view of how the backend checks that each draft observation stays tied to your source text.
+      </p>
+    </header>
+
+    <div class="flow">
+      <div class="step">
+        <div class="step-label">Start</div>
+        <h2>Inputs</h2>
+        <p>
+          <strong style="color: var(--text)">Raw notes</strong> (full inspection text) and the
+          <strong style="color: var(--text)">AI draft</strong> (observations, evidence bullets, CFR citations).
+        </p>
+      </div>
+
+      <div class="step">
+        <div class="step-label">Step 1</div>
+        <h2>Quality checks</h2>
+        <p>
+          Each observation is checked for a complete structure (narrative, evidence, citation) and whether the CFR reference matches Title 21 data where applicable.
+        </p>
+      </div>
+
+      <div class="step">
+        <div class="step-label">Step 2</div>
+        <h2>Grounding — linking evidence to the notes</h2>
+        <p style="margin-bottom: 0.75rem">
+          For every evidence bullet, the system asks: “Can we find this in the original notes?”
+        </p>
+        <div class="branch">
+          <div class="branch-title">Two ways a bullet can pass</div>
+          <div class="two-col">
+            <div class="mini">
+              <strong>Text match</strong>
+              <span>Same wording appears in the notes (with simple normalization).</span>
+            </div>
+            <div class="mini">
+              <strong>Meaning match</strong>
+              <span>Notes are split into short passages; each passage and the bullet are turned into vectors. If the closest match is above a similarity threshold, it counts as grounded.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-label">Step 3</div>
+        <h2>Scores for the dashboard</h2>
+        <p>
+          Results roll up into metrics partners see: how many bullets are supported, how strongly the observation wording overlaps the source, and combined “overall” quality — plus optional OCR alignment when a reference transcript is provided.
+        </p>
+      </div>
+
+      <div class="outcome">
+        <div class="step-label">Output</div>
+        <h2 style="font-size: 0.95rem; margin: 0">Evaluation dashboard &amp; API validation</h2>
+        <p style="margin-top: 0.5rem; margin-bottom: 0">
+          Stored scores for trending and the same grounding logic used to flag weak evidence on live responses.
+        </p>
+      </div>
+    </div>
+
+    <footer>
+      Smart Inspection — internal grounding flow (business summary). Technical defaults and modes are configurable in the backend.
+    </footer>
+  </div>
+</body>
+</html>

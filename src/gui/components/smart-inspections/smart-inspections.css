@@ -128,20 +128,35 @@
 }
 
 .si-root .hero {
-  flex: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24px;
   align-items: center;
-  padding: 40px 24px 60px;
+  padding: 56px 24px 32px;
   width: min(1200px, 100%);
   margin: 0 auto;
+}
+
+.si-root .hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin-bottom: 18px;
+  padding: 6px 10px;
+  border: 1px solid rgba(13, 217, 196, 0.32);
+  border-radius: 999px;
+  background: rgba(13, 217, 196, 0.08);
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .si-root .hero-title {
   font-size: clamp(2rem, 6vw, 3.375rem);
   line-height: 1.1;
   margin-bottom: 14px;
+  font-weight: 800;
 }
 
 .si-root .hero-title span {
@@ -154,11 +169,40 @@
   margin-bottom: 24px;
 }
 
+.si-root .hero-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.si-root .traction-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.si-root .traction-item {
+  min-height: 78px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(15, 29, 46, 0.72);
+}
+
+.si-root .traction-value {
+  margin-bottom: 5px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
 .si-root .hero-preview {
   background: var(--bg2);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius);
   overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
 }
 
 .si-root .preview-bar {
@@ -173,6 +217,50 @@
   font-size: 12px;
   line-height: 1.7;
   color: var(--text2);
+}
+
+.si-root .landing-workflow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: 0 24px 48px;
+}
+
+.si-root .workflow-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 132px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(15, 29, 46, 0.62);
+}
+
+.si-root .workflow-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(26, 127, 232, 0.14);
+  color: var(--teal);
+}
+
+.si-root .workflow-card h2 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.si-root .workflow-card p {
+  margin: 0;
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .si-root .auth-container {
@@ -546,6 +634,10 @@
     grid-template-columns: 1fr;
   }
 
+  .si-root .landing-workflow {
+    grid-template-columns: 1fr;
+  }
+
   .si-root .auth-left {
     display: none;
   }
@@ -579,6 +671,7 @@
   }
 
   .si-root .stats-grid,
+  .si-root .traction-strip,
   .si-root .grid-2,
   .si-root .grid-3,
   .si-root .form-grid-2,

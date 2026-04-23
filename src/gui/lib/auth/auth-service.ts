@@ -3,14 +3,17 @@ import { generateOtpCode, getOtpExpiration } from "@/lib/auth/otp";
 import { signToken, verifyToken, type JWTPayload } from "@/lib/auth/jwt";
 import {
   createUser,
+  findValidPasswordResetCode,
   findValidOtp,
   getUserByEmail,
   getUserById,
   markEmailVerified,
   storeOtpCode,
+  storePasswordResetCode,
+  updateUserPassword,
   type UserRecord,
 } from "@/lib/db/user-service";
-import { sendOtpEmail } from "@/lib/email/email-service";
+import { sendOtpEmail, sendPasswordResetEmail } from "@/lib/email/email-service";
 
 export async function validateLoginCredentials(email: string, password: string) {
   const user = await getUserByEmail(email);
@@ -85,6 +88,42 @@ export async function verifyEmailOtp(userId: string, code: string) {
   if (!user) return null;
   await markEmailVerified(userId, code);
   return getUserById(userId);
+}
+
+export async function sendPasswordResetOtp(email: string) {
+  const user = await getUserByEmail(email);
+  if (!user) return { sent: false as const };
+
+  const code = generateOtpCode();
+  const expiresAt = getOtpExpiration();
+  await storePasswordResetCode(user.id, code, expiresAt);
+  await sendPasswordResetEmail({
+    email: user.email,
+    firstName: user.first_name,
+    code,
+  });
+
+  return { sent: true as const, user, code, expiresAt };
+}
+
+export async function resetPasswordWithOtp(input: {
+  email: string;
+  code: string;
+  password: string;
+}) {
+  const user = await findValidPasswordResetCode(input.email, input.code);
+  if (!user) return null;
+
+  const passwordHash = await hashPassword(input.password);
+  await updateUserPassword(user.id, passwordHash, input.code);
+  const updatedUser = await getUserById(user.id);
+
+  if (!updatedUser) return null;
+
+  return {
+    user: updatedUser,
+    token: createSessionToken(updatedUser),
+  };
 }
 
 export function createSessionToken(

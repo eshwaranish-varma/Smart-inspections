@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Smart Inspections — Mason AI Day 2025 Poster</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&amp;family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&amp;family=Outfit:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --mason-green: #006633;
+      --mason-gold: #cfc200;
+      --mason-green-dark: #004422;
+      --accent-bar-1: #006633;
+      --accent-bar-2: #2d7a4a;
+      --accent-bar-3: #c4a000;
+      --accent-bar-4: #1e5a8a;
+      --chart-1: #006633;
+      --chart-2: #2d7a4a;
+      --chart-3: #c4a000;
+      --chart-4: #1e5a8a;
+      --ai-day-blue: #1a4d8c;
+      --ai-day-blue-bg: #e8f0fa;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --shadow: 0 4px 24px rgba(0, 34, 17, 0.08);
+      --text: #142018;
+      --text-muted: #3d5347;
+      --bg: #f6f9f6;
+      --card: #ffffff;
+      --border: rgba(0, 102, 51, 0.15);
+      --footer-bg: #0d1f14;
+      --footer-text: #e8f0eb;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #e8f0eb;
+        --text-muted: #a8bfb0;
+        --bg: #0f1812;
+        --card: #16261c;
+        --border: rgba(207, 194, 0, 0.2);
+        --shadow: 0 4px 28px rgba(0, 0, 0, 0.35);
+        --ai-day-blue-bg: #152536;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Outfit", system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.45;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .poster-wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    @media print {
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        background: #fff;
+      }
+
+      .poster-wrap {
+        max-width: none;
+        width: 100%;
+        padding: 0;
+        margin: 0;
+      }
+    }
+
+    @page {
+      size: 36in 48in;
+      margin: 0.35in;
+    }
+
+    @media print {
+      .poster {
+        width: 100%;
+        min-height: calc(48in - 0.7in);
+        font-size: 18pt;
+        border: none;
+        box-shadow: none;
+      }
+
+      .poster h1 {
+        font-size: 3.2rem;
+      }
+
+      .poster h2 {
+        font-size: 1.35rem;
+      }
+
+      .poster .tagline {
+        font-size: 1.2rem;
+      }
+
+      .poster .body-sm {
+        font-size: 13pt;
+      }
+
+      .poster .mono {
+        font-size: 11pt;
+      }
+
+      .poster .stat-value {
+        font-size: 1.75rem;
+      }
+
+      .no-print-hint {
+        display: none;
+      }
+    }
+
+    .poster {
+      background: var(--card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    header.poster-header {
+      background: linear-gradient(135deg, var(--mason-green) 0%, var(--mason-green-dark) 100%);
+      color: #fff;
+      padding: 1.25rem 1.5rem 1.5rem;
+      position: relative;
+    }
+
+    header.poster-header::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 4px;
+      background: var(--mason-gold);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: rgba(207, 194, 0, 0.25);
+      color: #fff;
+      border: 1px solid rgba(207, 194, 0, 0.6);
+      padding: 0.35rem 0.65rem;
+      border-radius: var(--radius-sm);
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-family: "DM Serif Display", Georgia, serif;
+      font-weight: 400;
+      font-size: clamp(1.65rem, 4vw, 2.35rem);
+      line-height: 1.12;
+      margin: 0 0 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .tagline {
+      font-size: 1.05rem;
+      font-weight: 500;
+      opacity: 0.95;
+      max-width: 52ch;
+      margin: 0;
+    }
+
+    .author-strip {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.25);
+      font-size: 0.9rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.25rem;
+      align-items: baseline;
+    }
+
+    .author-strip strong {
+      font-weight: 600;
+    }
+
+    .author-strip a {
+      color: var(--mason-gold);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    main.poster-main {
+      padding: 1.25rem 1.5rem 1.5rem;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+    }
+
+    @media (min-width: 720px) {
+      .grid-3 {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+      }
+    }
+
+    @media print {
+      .grid-3 {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+      }
+    }
+
+    section.column {
+      min-width: 0;
+    }
+
+    h2 {
+      font-family: "DM Serif Display", Georgia, serif;
+      font-weight: 400;
+      font-size: 1.2rem;
+      color: var(--mason-green);
+      margin: 0 0 0.65rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--mason-gold);
+    }
+
+    h3 {
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      margin: 1rem 0 0.4rem;
+    }
+
+    .body-sm {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+    }
+
+    .mono {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.8rem;
+    }
+
+    .callout {
+      background: linear-gradient(135deg, rgba(0, 102, 51, 0.08), rgba(207, 194, 0, 0.12));
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1rem;
+      margin: 0.75rem 0;
+    }
+
+    .callout strong {
+      color: var(--mason-green);
+    }
+
+    .pillars {
+      list-style: none;
+      padding: 0;
+      margin: 0.5rem 0 0;
+    }
+
+    .pillars li {
+      display: flex;
+      gap: 0.65rem;
+      align-items: flex-start;
+      padding: 0.55rem 0;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .pillars li:last-child {
+      border-bottom: none;
+    }
+
+    .pillar-icon {
+      flex-shrink: 0;
+      width: 2rem;
+      height: 2rem;
+      border-radius: var(--radius-sm);
+      background: var(--mason-green);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+
+    .pillar-icon[aria-hidden="true"] {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .tag-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.65rem;
+    }
+
+    .tag {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.68rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 999px;
+      background: rgba(0, 102, 51, 0.12);
+      border: 1px solid var(--border);
+    }
+
+    .tag.featured {
+      background: rgba(207, 194, 0, 0.35);
+      font-weight: 600;
+      color: var(--mason-green-dark);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tag.featured {
+        color: var(--mason-gold);
+      }
+    }
+
+    /* Flow diagram */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin: 0.75rem 0;
+    }
+
+    .flow-row {
+      display: flex;
+      align-items: stretch;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .flow-node {
+      flex: 1 1 120px;
+      min-width: 100px;
+      background: var(--bg);
+      border: 2px solid var(--mason-green);
+      border-radius: var(--radius-md);
+      padding: 0.55rem 0.65rem;
+      text-align: center;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .flow-arrow {
+      align-self: center;
+      color: var(--mason-green);
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+      margin: 0.75rem 0;
+    }
+
+    .stat-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.65rem 0.75rem;
+    }
+
+    .stat-label {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .stat-value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--mason-green);
+      line-height: 1.2;
+    }
+
+    .stat-note {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    /* Bar chart (CSS only) */
+    .chart {
+      margin: 0.75rem 0;
+    }
+
+    .chart-row {
+      margin-bottom: 0.55rem;
+    }
+
+    .chart-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .chart-bar-track {
+      height: 14px;
+      background: var(--bg);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .chart-bar {
+      height: 100%;
+      border-radius: 999px;
+      min-width: 4px;
+    }
+
+    .contrib {
+      list-style: none;
+      padding: 0;
+      margin: 0.5rem 0 0;
+    }
+
+    .contrib li {
+      padding: 0.45rem 0 0.45rem 1.1rem;
+      position: relative;
+      font-size: 0.92rem;
+    }
+
+    .contrib li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.85rem;
+      width: 6px;
+      height: 6px;
+      background: var(--mason-gold);
+      border-radius: 50%;
+    }
+
+    .ai-day-box {
+      background: var(--ai-day-blue-bg);
+      border: 2px solid var(--ai-day-blue);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1rem;
+      margin-top: 0.75rem;
+    }
+
+    .ai-day-box h3 {
+      color: var(--ai-day-blue);
+      margin-top: 0;
+    }
+
+    /* Impact row */
+    .impact-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.65rem;
+      padding: 1rem 1.5rem 1.25rem;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+    }
+
+    @media (min-width: 720px) {
+      .impact-row {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    @media print {
+      .impact-row {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    .impact-card {
+      background: var(--card);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 0.9rem;
+      border: 1px solid var(--border);
+      border-top: 4px solid var(--accent-bar-1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .impact-card:nth-child(2) {
+      border-top-color: var(--accent-bar-2);
+    }
+
+    .impact-card:nth-child(3) {
+      border-top-color: var(--accent-bar-3);
+    }
+
+    .impact-card:nth-child(4) {
+      border-top-color: var(--accent-bar-4);
+    }
+
+    .impact-card h3 {
+      margin: 0 0 0.35rem;
+      font-size: 0.88rem;
+      color: var(--text);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .impact-card p {
+      margin: 0;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    footer.poster-footer {
+      background: var(--footer-bg);
+      color: var(--footer-text);
+      padding: 1rem 1.5rem 1.25rem;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    @media (min-width: 600px) {
+      footer.poster-footer {
+        grid-template-columns: 1fr auto;
+      }
+    }
+
+    footer.poster-footer a {
+      color: var(--mason-gold);
+    }
+
+    .qr-placeholder {
+      width: 88px;
+      height: 88px;
+      border: 2px dashed rgba(207, 194, 0, 0.5);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.65rem;
+      text-align: center;
+      padding: 0.35rem;
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .no-print-hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      background: rgba(207, 194, 0, 0.15);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="poster-wrap">
+    <p class="no-print-hint" role="note">Screen preview: layout stacks on narrow viewports; print uses a 36×48 in canvas. For official author names and emails, update the header and footer in this file—the repository README currently lists only the capstone team name.</p>
+
+    <article class="poster" aria-labelledby="poster-title">
+      <header class="poster-header">
+        <div class="badge" aria-label="Event">Mason AI Day · 2025 · George Mason University</div>
+        <h1 id="poster-title">Smart Inspections: AI-Assisted FDA 483 &amp; EIR Drafting</h1>
+        <p class="tagline">OCR, regulatory RAG, and human-in-the-loop workflows for consistent inspection documentation.</p>
+        <div class="author-strip">
+          <span><strong>Authors:</strong> Capstone team — Smart Inspection (George Mason University)</span>
+          <span><strong>Repository:</strong> <a href="https://github.com/sathyapalreddypeddakkagari/SmartInspectionTeam">github.com/sathyapalreddypeddakkagari/SmartInspectionTeam</a></span>
+        </div>
+      </header>
+
+      <main class="poster-main">
+        <div class="grid-3">
+          <section class="column" aria-label="Problem space: why this matters and research questions">
+            <h2>Problem Space</h2>
+            <h3>Why This Matters at AI Day</h3>
+            <p class="body-sm">Public-sector inspection teams produce high-stakes structured documents where errors and inconsistency carry regulatory and safety implications. This project connects <strong>AI literacy</strong> (how LLM outputs are produced and limited), <strong>governance</strong> (audit trails, review gates, citation verification), and <strong>workforce readiness</strong> (supervisor review, signatures, training-oriented UI)—themes central to responsible deployment of generative AI.</p>
+
+            <div class="callout" role="note">
+              <strong>Core challenge:</strong> FDA Form 483 observations and Establishment Inspection Reports are labor-intensive, easy to make inconsistent across investigators, and difficult to trace when multiple people touch the same case.
+            </div>
+
+            <h3>Research questions</h3>
+            <ul class="pillars">
+              <li>
+                <span class="pillar-icon" aria-hidden="true">§</span>
+                <div>
+                  <strong>Grounding:</strong> How can retrieval + note chunking keep drafted observations tied to investigator source text and IOM/regulatory context?
+                </div>
+              </li>
+              <li>
+                <span class="pillar-icon" aria-hidden="true">21</span>
+                <div>
+                  <strong>Citations:</strong> How can model-proposed CFR strings be aligned to canonical Title&nbsp;21 rows with explicit match scores and review flags?
+                </div>
+              </li>
+              <li>
+                <span class="pillar-icon" aria-hidden="true">✓</span>
+                <div>
+                  <strong>Governance:</strong> How do workflow states, versions, and pipeline logs make AI assistance reviewable rather than opaque?
+                </div>
+              </li>
+            </ul>
+
+            <h3>Tag cloud</h3>
+            <div class="tag-cloud" aria-label="Featured technology and domain tags">
+              <span class="tag featured">Human-in-the-loop</span>
+              <span class="tag featured">RAG / FAISS</span>
+              <span class="tag featured">Title 21 CFR</span>
+              <span class="tag">LangChain</span>
+              <span class="tag">FastAPI</span>
+              <span class="tag">Next.js</span>
+              <span class="tag">PostgreSQL</span>
+              <span class="tag">OCR · Tesseract</span>
+              <span class="tag">Audit trail</span>
+              <span class="tag">Form FDA 483</span>
+              <span class="tag">EIR</span>
+            </div>
+          </section>
+
+          <section class="column" aria-label="Methodology: architecture and metrics">
+            <h2>Methodology</h2>
+            <h3>System architecture</h3>
+            <div class="flow" role="img" aria-label="Pipeline flow from ingestion to output">
+              <div class="flow-row">
+                <div class="flow-node">Ingestion<br /><span class="mono" style="font-weight:400;font-size:0.65rem">PDF / image · OCR</span></div>
+                <span class="flow-arrow" aria-hidden="true">→</span>
+                <div class="flow-node">Retrieval<br /><span class="mono" style="font-weight:400;font-size:0.65rem">Notes + IOM KB</span></div>
+                <span class="flow-arrow" aria-hidden="true">→</span>
+                <div class="flow-node">LLM engine<br /><span class="mono" style="font-weight:400;font-size:0.65rem">segment · draft</span></div>
+              </div>
+              <div class="flow-row">
+                <div class="flow-node">Citation resolver<br /><span class="mono" style="font-weight:400;font-size:0.65rem">Title 21 match</span></div>
+                <span class="flow-arrow" aria-hidden="true">→</span>
+                <div class="flow-node">Validation<br /><span class="mono" style="font-weight:400;font-size:0.65rem">grounding · flags</span></div>
+                <span class="flow-arrow" aria-hidden="true">→</span>
+                <div class="flow-node">Output<br /><span class="mono" style="font-weight:400;font-size:0.65rem">483 · EIR · .docx</span></div>
+              </div>
+            </div>
+
+            <div class="stats-grid" aria-label="Key quantitative highlights">
+              <div class="stat-card">
+                <div class="stat-label">Citation alignment (sample eval)</div>
+                <div class="stat-value">~99%</div>
+                <div class="stat-note">Representative <span class="mono">citation_match_score</span> values from logged draft runs (not a full benchmark).</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Pipeline shape</div>
+                <div class="stat-value">1+N</div>
+                <div class="stat-note">One segmentation pass plus <strong>one LLM call per observation</strong> (strict per-row drafting).</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Title 21 corpus (CSV)</div>
+                <div class="stat-value">8,634</div>
+                <div class="stat-note">Rows in <span class="mono">data/title-21-sections.csv</span> backing citation lookup.</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">CFR part breadth</div>
+                <div class="stat-value">264</div>
+                <div class="stat-note">Distinct <span class="mono">21 CFR …</span> part numbers represented in the corpus (parsed from citations).</div>
+              </div>
+            </div>
+
+            <h3>Method note</h3>
+            <p class="body-sm">The backend combines <strong>LangChain</strong> with <strong>Gemini or OpenAI</strong> (per <span class="mono">LLM_PROVIDER</span>), optional <strong>FAISS + embeddings</strong> for knowledge retrieval with keyword fallback, and <strong>CitationService</strong> to map model CFR strings to canonical sections—plus optional grounding metrics for dashboards.</p>
+          </section>
+
+          <section class="column" aria-label="Results and contributions">
+            <h2>Results &amp; Contributions</h2>
+            <h3>Citation match quality by theme (sample runs)</h3>
+            <p class="body-sm sr-only">Horizontal bar chart showing approximate citation resolution scores for four regulatory themes.</p>
+            <div class="chart" role="img" aria-label="Bar chart: Part 211 quality unit 99 percent, Part 211 laboratory records 99 percent, Part 314 reporting 99 percent, Part 211 process validation 98 percent">
+              <div class="chart-row">
+                <div class="chart-label"><span>Part 211 — Quality unit</span><span>99%</span></div>
+                <div class="chart-bar-track"><div class="chart-bar" style="width:99%;background:var(--chart-1)"></div></div>
+              </div>
+              <div class="chart-row">
+                <div class="chart-label"><span>Part 211 — Laboratory records</span><span>99%</span></div>
+                <div class="chart-bar-track"><div class="chart-bar" style="width:99%;background:var(--chart-2)"></div></div>
+              </div>
+              <div class="chart-row">
+                <div class="chart-label"><span>Part 314 — Postmarketing data</span><span>99%</span></div>
+                <div class="chart-bar-track"><div class="chart-bar" style="width:99%;background:var(--chart-3)"></div></div>
+              </div>
+              <div class="chart-row">
+                <div class="chart-label"><span>Part 211 — Process validation</span><span>98%</span></div>
+                <div class="chart-bar-track"><div class="chart-bar" style="width:98%;background:var(--chart-4)"></div></div>
+              </div>
+            </div>
+            <p class="mono body-sm" style="margin-top:0.25rem">Scores reflect exemplar outputs in <span class="mono">backend/app/evaluation/evaluation_logs.json</span>; aggregate evaluation varies by prompt, model, and notes.</p>
+
+            <h3>Contributions</h3>
+            <ul class="contrib">
+              <li><strong>Novel Dataset:</strong> Title&nbsp;21 section table plus FY2025 inspection observation spreadsheet and IOM PDFs under <span class="mono">data/</span> (per repository README).</li>
+              <li><strong>Open-Source Tool:</strong> Next.js workflow GUI, FastAPI AI/OCR service, Docker Compose + NGINX path-based routing, PostgreSQL/Supabase-friendly schema.</li>
+              <li><strong>Policy Framework:</strong> Supervisor review, electronic signatures, document versioning, pipeline run logging, and explicit CFR review flags when matches are weak.</li>
+            </ul>
+
+            <div class="ai-day-box" aria-label="Alignment with Mason AI Day themes">
+              <h3>AI Day alignment</h3>
+              <p class="body-sm" style="margin:0;color:var(--text)">Demonstrates <strong>transparent AI assistance</strong> in a regulated-document setting: investigators see retrieval context, citation resolution scores, and structured review states—supporting literacy and accountable use rather than “black box” automation.</p>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <section class="impact-row" aria-label="Impact themes: AI literacy, governance, workforce, open science">
+        <article class="impact-card">
+          <h3>AI Literacy at Scale</h3>
+          <p>Surfaces how segmentation, RAG, and per-observation LLM calls shape outputs—teachable hooks for courses and agencies.</p>
+        </article>
+        <article class="impact-card">
+          <h3>Institutional Governance</h3>
+          <p>Audit logs, workflow transitions, and citation verification encode institutional control over model behavior.</p>
+        </article>
+        <article class="impact-card">
+          <h3>Workforce Readiness</h3>
+          <p>Role-based review, comments, and signatures mirror real inspection teams preparing for AI copilots.</p>
+        </article>
+        <article class="impact-card">
+          <h3>Open Science</h3>
+          <p>Public codebase and documented architecture lower the barrier to study and extend regulatory NLP/RAG.</p>
+        </article>
+      </section>
+
+      <footer class="poster-footer" aria-label="Contact and repository">
+        <div>
+          <p style="margin:0 0 0.35rem;font-weight:600">George Mason University · Mason AI Day 2025</p>
+          <p class="body-sm" style="margin:0;color:rgba(232,240,235,0.88)">Smart Inspections — capstone project. Replace this block with individual names, roles, and emails when available.</p>
+          <p style="margin:0.5rem 0 0;font-size:0.88rem">
+            <a href="https://github.com/sathyapalreddypeddakkagari/SmartInspectionTeam">GitHub repository</a>
+            · Add lab / department URL here if desired.
+          </p>
+        </div>
+        <div class="qr-placeholder" role="img" aria-label="QR code placeholder for poster URL or project demo">QR<br />placeholder<br />link to repo</div>
+      </footer>
+    </article>
+  </div>
+</body>
+</html>

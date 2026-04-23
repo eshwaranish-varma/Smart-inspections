@@ -1,10 +1,11 @@
-# Smart Inspections — production-oriented stack
-# Load variables from a `.env` file in this directory (Compose reads it automatically).
-# Copy .env.example to `.env` and set DATABASE_URL (Supabase), JWT_SECRET, LLM keys.
+# Smart Inspections — production stack (external Postgres e.g. Supabase)
 #
-# Default: Supabase or any external Postgres — set DATABASE_URL in `.env` (no local `db` container).
-# Optional local DB: docker compose --profile local-db up --build
-#   and DATABASE_URL=postgresql://postgres:postgres@db:5432/smart_inspections
+# Usage (recommended):
+#   cp .env.production.example .env.production   # edit secrets
+#   docker compose --env-file .env.production up --build -d
+#
+# Optional local Postgres (not for Supabase prod):
+#   docker compose --profile local-db --env-file .env.production up --build -d
 
 services:
   db:
@@ -27,7 +28,7 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
-    restart: unless-stopped
+    restart: always
     logging: &default-logging
       driver: json-file
       options:
@@ -41,49 +42,52 @@ services:
     container_name: smart-backend
     ports:
       - "${BACKEND_PORT:-8000}:8000"
+    env_file:
+      - .env.production
     environment:
-      # Set in `.env` — Supabase URI with ?sslmode=require, or postgresql://postgres:postgres@db:5432/smart_inspections with --profile local-db
-      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost,http://127.0.0.1}
       DATA_DIR: /app/data
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_ROUTER_API_KEY: ${OPENAI_ROUTER_API_KEY:-}
-      OPENAI_ROUTER_MODEL: ${OPENAI_ROUTER_MODEL:-}
-      OPENAI_COMPAT_BASE_URL: ${OPENAI_COMPAT_BASE_URL:-}
-      LLM_PROVIDER: ${LLM_PROVIDER:-google}
-      GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.0-flash}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o}
+      ENVIRONMENT: production
+      # Optional: override pooler vs direct in .env.production (DATABASE_POOLER_URL / DATABASE_DIRECT_URL)
     volumes:
       - ./data:/app/data
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
 
   gui:
     build:
       context: ./src/gui
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
     container_name: smart-gui
     ports:
       - "${GUI_PORT:-3000}:3000"
+    env_file:
+      - .env.production
     environment:
-      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
       NODE_ENV: production
-      JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-      # Server-side Route Handlers must reach FastAPI by Docker DNS name (not localhost).
-      BACKEND_API_URL: ${BACKEND_API_URL:-http://backend:8000}
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASS: ${SMTP_PASS:-}
-      EMAIL_FROM: ${EMAIL_FROM:-}
+      # Server-side route handlers must use Docker service name (not public URL)
+      BACKEND_API_URL: http://backend:8000
     depends_on:
       backend:
         condition: service_healthy
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
   nginx:
     image: nginx:1.25-alpine
@@ -97,14 +101,14 @@ services:
         condition: service_healthy
       gui:
         condition: service_healthy
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 5s
+      start_period: 10s
 
 volumes:
   postgres_data:

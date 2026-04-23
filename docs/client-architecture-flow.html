@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Inspection Architecture Flow</title>
+  <style>
+    :root {
+      --bg: #f4f7f8;
+      --panel: #ffffff;
+      --ink: #14212b;
+      --muted: #5a6975;
+      --line: #d8e1e5;
+      --accent: #0d5c63;
+      --accent-soft: #e6f3f4;
+      --accent-2: #1e3a5f;
+      --accent-2-soft: #e9eef7;
+      --warn: #8f5a00;
+      --warn-soft: #fff5df;
+      --success: #1e6a45;
+      --success-soft: #e8f5ee;
+      --shadow: 0 14px 36px rgba(20, 33, 43, 0.08);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(180deg, #f7fafb 0%, #eef3f5 100%);
+      color: var(--ink);
+      line-height: 1.5;
+    }
+
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 40px 24px 72px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #ffffff 0%, #f2f7f9 100%);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      padding: 36px;
+      margin-bottom: 28px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 12px;
+      line-height: 1.15;
+    }
+
+    h1 {
+      font-size: 42px;
+      letter-spacing: -0.03em;
+      max-width: 980px;
+    }
+
+    h2 {
+      font-size: 28px;
+      letter-spacing: -0.02em;
+    }
+
+    h3 {
+      font-size: 18px;
+    }
+
+    p {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 22px;
+      margin-top: 24px;
+    }
+
+    .summary-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .summary-card strong {
+      color: var(--ink);
+    }
+
+    .section {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(8px);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: flex-start;
+      margin-bottom: 22px;
+    }
+
+    .section-head p {
+      max-width: 820px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .pill {
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .pill.input { background: #eef7ff; color: #255b91; border-color: #cfe4fb; }
+    .pill.gui { background: var(--accent-2-soft); color: var(--accent-2); border-color: #cfd9ea; }
+    .pill.backend { background: var(--accent-soft); color: var(--accent); border-color: #cfe6e8; }
+    .pill.data { background: #f3edff; color: #5b3b91; border-color: #ddd1f6; }
+    .pill.metric { background: var(--warn-soft); color: var(--warn); border-color: #f2ddad; }
+    .pill.output { background: var(--success-soft); color: var(--success); border-color: #cfe7d8; }
+
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(180px, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    .flow-col {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: relative;
+    }
+
+    .flow-col:not(:last-child)::after {
+      content: ">";
+      position: absolute;
+      right: -12px;
+      top: 44%;
+      transform: translateY(-50%);
+      color: #8aa0ad;
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .node {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      min-height: 118px;
+      box-shadow: 0 8px 24px rgba(20, 33, 43, 0.05);
+    }
+
+    .node .tag {
+      display: inline-block;
+      margin-bottom: 10px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .node.input .tag { color: #255b91; }
+    .node.gui .tag { color: var(--accent-2); }
+    .node.backend .tag { color: var(--accent); }
+    .node.data .tag { color: #5b3b91; }
+    .node.output .tag { color: var(--success); }
+    .node.metric .tag { color: var(--warn); }
+
+    .node h3 {
+      margin-bottom: 8px;
+      font-size: 17px;
+    }
+
+    .node ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .node li + li {
+      margin-top: 4px;
+    }
+
+    .subsection-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 20px;
+    }
+
+    .detail-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .step-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 14px;
+      border-radius: 16px;
+      background: #fafcfd;
+      border: 1px solid #ebf0f2;
+    }
+
+    .step-no {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: var(--accent-2);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+    }
+
+    .trace-layers {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .trace-card {
+      border-radius: 18px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .trace-card h3 {
+      margin-bottom: 10px;
+    }
+
+    .trace-card code {
+      font-family: Consolas, "Courier New", monospace;
+      background: #f3f6f8;
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+
+    .grounding-strip {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(150px, 1fr));
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .grounding-cell {
+      position: relative;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      min-height: 130px;
+    }
+
+    .grounding-cell:not(:last-child)::after {
+      content: "->";
+      position: absolute;
+      right: -18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #8aa0ad;
+      font-weight: 800;
+      font-size: 18px;
+    }
+
+    .code-map {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .code-block {
+      background: #111a21;
+      color: #dbe7ee;
+      border-radius: 18px;
+      padding: 18px;
+      overflow: auto;
+    }
+
+    .code-block h3 {
+      color: #ffffff;
+      margin-bottom: 10px;
+    }
+
+    .code-block ul {
+      margin: 0;
+      padding-left: 18px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: #f7fbfb;
+      border-radius: 0 16px 16px 0;
+      padding: 16px 18px;
+      margin-top: 18px;
+    }
+
+    .footer-note {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #6b7b86;
+    }
+
+    @media (max-width: 1200px) {
+      .flow-grid,
+      .grounding-strip {
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
+      }
+
+      .flow-col::after,
+      .grounding-cell::after {
+        display: none;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .hero-grid,
+      .subsection-grid,
+      .trace-layers,
+      .code-map {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 32px;
+      }
+
+      .page {
+        padding: 24px 14px 48px;
+      }
+
+      .flow-grid,
+      .grounding-strip {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="eyebrow">Smart Inspection Platform</div>
+      <h1>End-to-End Technical Architecture: From Raw Inspection Inputs to Grounded FDA 483 Observations and Evaluation Dashboards</h1>
+      <p>
+        This browser-ready architecture view is designed for client presentations. It shows how the project takes raw
+        end-user evidence, routes it through <strong>src/gui</strong> and backend handlers, grounds AI output against
+        source text, resolves CFR and IOM references, computes evaluation metrics, and exposes explainable outputs to
+        reviewers and decision-makers.
+      </p>
+      <div class="legend">
+        <span class="pill input">End User Input</span>
+        <span class="pill gui">src/gui and Workflow Layer</span>
+        <span class="pill backend">Backend AI and Validation Layer</span>
+        <span class="pill data">Database and Traceability Layer</span>
+        <span class="pill metric">Evaluation and Metrics</span>
+        <span class="pill output">Business Output</span>
+      </div>
+
+      <div class="hero-grid">
+        <div class="summary-card">
+          <h3>Primary Technical Story</h3>
+          <p>
+            The project does not directly generate a narrative from a raw file. It first extracts text, consolidates
+            notes, segments distinct issues, retrieves the most relevant evidence and regulatory references using
+            embeddings, drafts one observation per issue, validates the observation against source text and CFR records,
+            scores it, stores the full trace, and then presents the results in evaluation dashboards.
+          </p>
+        </div>
+        <div class="summary-card">
+          <h3>Business Assurance</h3>
+          <p><strong>Traceable:</strong> every observation points back to evidence and pipeline events.</p>
+          <p><strong>Grounded:</strong> evidence is checked against raw notes by substring and semantic similarity.</p>
+          <p><strong>Auditable:</strong> workflow logs, AI run logs, and pipeline run logs are all stored.</p>
+          <p><strong>Actionable:</strong> dashboards surface quality, risk, and remediation signals per inspection.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>1. Executive End-to-End Flow</h2>
+          <p>
+            This is the complete lifecycle from raw evidence created by the end user to the final grounded observation
+            set and dashboard visibility.
+          </p>
+        </div>
+      </div>
+
+      <div class="flow-grid">
+        <div class="flow-col">
+          <div class="node input">
+            <div class="tag">Input</div>
+            <h3>Raw Inspection Inputs</h3>
+            <ul>
+              <li>Typed investigator notes</li>
+              <li>Uploaded PDF, image, DOCX, TXT files</li>
+              <li>Checklist evidence and CFR hints</li>
+              <li>Optional ground truth text for OCR scoring</li>
+            </ul>
+          </div>
+          <div class="node input">
+            <div class="tag">Input</div>
+            <h3>OCR Extraction</h3>
+            <ul>
+              <li>PDF text extraction via PyMuPDF</li>
+              <li>Scanned page fallback to Tesseract OCR</li>
+              <li>Editable OCR text returned to the user</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="flow-col">
+          <div class="node gui">
+            <div class="tag">src/gui</div>
+            <h3>Note Consolidation</h3>
+            <ul>
+              <li><code>collectAllNotes()</code> merges all note sources</li>
+              <li>Creates one canonical <code>raw_notes</code> payload</li>
+              <li>User submits through workflow-scoped route handler</li>
+            </ul>
+          </div>
+          <div class="node gui">
+            <div class="tag">src/gui</div>
+            <h3>Workflow Route Handler</h3>
+            <ul>
+              <li>Checks user access and workflow state</li>
+              <li>Calls backend <code>/ai/generate-observations</code></li>
+              <li>Writes lightweight workflow AI log to <code>ai_runs</code></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="flow-col">
+          <div class="node backend">
+            <div class="tag">Backend</div>
+            <h3>AI Pipeline Orchestration</h3>
+            <ul>
+              <li>Create <code>pipeline_run</code></li>
+              <li>Segment raw notes into distinct issues</li>
+              <li>Build retrieval package per issue</li>
+              <li>Draft one FDA 483 observation per issue</li>
+            </ul>
+          </div>
+          <div class="node backend">
+            <div class="tag">Backend</div>
+            <h3>Grounding and Citation Resolution</h3>
+            <ul>
+              <li>Note chunk embeddings and cosine retrieval</li>
+              <li>Knowledge-base retrieval for IOM/regulatory context</li>
+              <li>CFR exact, fuzzy, semantic, or hybrid match</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="flow-col">
+          <div class="node metric">
+            <div class="tag">Metrics</div>
+            <h3>Observation Evaluation</h3>
+            <ul>
+              <li>Structure validation</li>
+              <li>Grounding precision, recall, F1</li>
+              <li>Narrative grounding ratio</li>
+              <li>OCR accuracy when ground truth exists</li>
+            </ul>
+          </div>
+          <div class="node metric">
+            <div class="tag">Metrics</div>
+            <h3>Pipeline Confidence</h3>
+            <ul>
+              <li>Grounding F1 component</li>
+              <li>CFR similarity component</li>
+              <li>Structure component</li>
+              <li>Retrieval score component</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="flow-col">
+          <div class="node data">
+            <div class="tag">Persistence</div>
+            <h3>Storage and Traceability</h3>
+            <ul>
+              <li><code>evaluation_logs.json</code> for evaluation history</li>
+              <li><code>pipeline_runs</code> family for explainability</li>
+              <li><code>ai_runs</code> for workflow linkage</li>
+            </ul>
+          </div>
+          <div class="node output">
+            <div class="tag">Output</div>
+            <h3>Reviewer and Client Outputs</h3>
+            <ul>
+              <li>Inspection evaluation dashboard</li>
+              <li>Pipeline run dashboard</li>
+              <li>Workflow audit trail and review screens</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>2. Step-by-Step Technical Process</h2>
+          <p>
+            This section is designed for a verbal walkthrough. It explains each stage in project terms, from the user
+            interface to the backend AI route and the evaluation response.
+          </p>
+        </div>
+      </div>
+
+      <div class="subsection-grid">
+        <div class="detail-panel">
+          <div class="step-list">
+            <div class="step">
+              <div class="step-no">01</div>
+              <div>
+                <h3>End user submits inspection evidence</h3>
+                <p>The investigator enters typed notes, uploads documents, and optionally marks checklist evidence.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">02</div>
+              <div>
+                <h3>OCR normalizes non-machine-readable evidence</h3>
+                <p>PDF and image sources are converted to readable text so they can participate in downstream grounding.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">03</div>
+              <div>
+                <h3><code>src/gui</code> assembles the final <code>raw_notes</code></h3>
+                <p>Typed notes, OCR text, and checklist evidence are merged into one canonical source block.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">04</div>
+              <div>
+                <h3>Next.js workflow route validates and forwards</h3>
+                <p>The route handler checks workflow permissions and forwards the request to the backend AI route.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">05</div>
+              <div>
+                <h3>FastAPI creates pipeline run metadata</h3>
+                <p>The backend opens a pipeline run record so the full generation lifecycle can be audited later.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">06</div>
+              <div>
+                <h3>LLM segmentation isolates distinct issues</h3>
+                <p>Raw notes are split into distinct observations so the project preserves one issue to one draft row.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">07</div>
+              <div>
+                <h3>Embeddings retrieve relevant context</h3>
+                <p>Each segmented issue is used as a query against note chunks and regulatory knowledge-base chunks.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">08</div>
+              <div>
+                <h3>LLM drafts one grounded 483 observation</h3>
+                <p>The backend drafts exactly one observation per issue, carrying evidence and proposed CFR citation.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">09</div>
+              <div>
+                <h3>CFR and grounding validation executes</h3>
+                <p>The system checks whether the evidence is anchored in the source and whether the CFR citation resolves.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">10</div>
+              <div>
+                <h3>Metrics, confidence, and status are computed</h3>
+                <p>Each observation receives evaluation scores, a confidence breakdown, and a pass or warning status.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">11</div>
+              <div>
+                <h3>Evaluation and trace data are persisted</h3>
+                <p>The project writes evaluation logs, pipeline trace rows, and workflow AI run linkage rows.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">12</div>
+              <div>
+                <h3>Dashboards surface quality and explainability</h3>
+                <p>Reviewers see inspection-level quality scores and can drill into the exact evidence and retrieval path.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-panel">
+          <h3>Why this architecture satisfies a client</h3>
+          <p><strong>It is explainable.</strong> The client can see input, segmentation, retrieval, CFR candidates, output, and scoring.</p>
+          <p><strong>It is measurable.</strong> The project calculates grounding quality rather than assuming the narrative is correct.</p>
+          <p><strong>It is workflow-aware.</strong> The `src/gui` route layer enforces inspection context and stores business audit linkage.</p>
+          <p><strong>It is enterprise-friendly.</strong> The design separates user workflow, AI orchestration, regulatory retrieval, and audit storage.</p>
+
+          <div class="callout">
+            <h3>Client message</h3>
+            <p>
+              The platform is not simply "an LLM writing observations." It is a governed inspection pipeline that
+              extracts evidence, grounds AI output, validates regulations, and exposes quality controls before the
+              narrative influences compliance or remediation decisions.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>3. Technical Grounding Architecture</h2>
+          <p>
+            This strip shows how the AI-generated observation is grounded back to evidence, CFR citations, and IOM or
+            regulatory references in project terms.
+          </p>
+        </div>
+      </div>
+
+      <div class="grounding-strip">
+        <div class="grounding-cell">
+          <h3>Canonical Source Text</h3>
+          <p>The platform begins with one canonical <code>raw_notes</code> block assembled from typed notes and OCR text.</p>
+        </div>
+        <div class="grounding-cell">
+          <h3>Segment Query</h3>
+          <p>Each segmented issue becomes a retrieval query so the platform only searches for evidence relevant to that issue.</p>
+        </div>
+        <div class="grounding-cell">
+          <h3>Embedding Retrieval</h3>
+          <p>Note chunks are embedded and scored by cosine similarity. Knowledge-base PDF chunks are also retrieved.</p>
+        </div>
+        <div class="grounding-cell">
+          <h3>Observation Draft</h3>
+          <p>The LLM drafts a single observation with evidence lines and a proposed CFR citation for that issue.</p>
+        </div>
+        <div class="grounding-cell">
+          <h3>Validation Layer</h3>
+          <p>Evidence is checked against source text with substring, semantic, or hybrid grounding. CFR is matched against Title 21 references.</p>
+        </div>
+        <div class="grounding-cell">
+          <h3>Explainable Output</h3>
+          <p>The final record carries evidence sources, citation match scores, grounding F1, narrative overlap, and confidence.</p>
+        </div>
+      </div>
+
+      <div class="trace-layers">
+        <div class="trace-card">
+          <h3>Evidence Grounding</h3>
+          <p>
+            The project verifies whether each evidence string can be tied back to the source notes. This prevents
+            polished but unsupported narratives from being treated as trusted inspection findings.
+          </p>
+        </div>
+        <div class="trace-card">
+          <h3>CFR Grounding</h3>
+          <p>
+            Proposed CFR citations are checked through exact, fuzzy, semantic, or hybrid matching against Title 21
+            reference data before they are presented as validated.
+          </p>
+        </div>
+        <div class="trace-card">
+          <h3>IOM and Regulatory Context</h3>
+          <p>
+            The knowledge base provides retrieval context from regulatory PDFs so narrative generation is informed by
+            reference material rather than only the raw note text.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>4. Database and Traceability Model</h2>
+          <p>
+            The project stores different levels of traceability for different reporting needs: workflow linkage,
+            explainable AI trace, and inspection evaluation history.
+          </p>
+        </div>
+      </div>
+
+      <div class="trace-layers">
+        <div class="trace-card">
+          <h3>Workflow Layer in <code>src/gui</code></h3>
+          <p><code>inspections</code> stores inspection state and draft payloads.</p>
+          <p><code>ai_runs</code> stores high-level workflow AI calls and links to <code>pipeline_run_id</code>.</p>
+          <p><code>audit_logs</code> stores business actions such as generate, review, approve, or return.</p>
+        </div>
+        <div class="trace-card">
+          <h3>Backend Explainability Layer</h3>
+          <p><code>pipeline_runs</code> stores one row per generation run.</p>
+          <p><code>pipeline_run_events</code> stores segmentation, retrieval, grounding, evaluation, and storage events.</p>
+          <p><code>pipeline_run_chunks</code>, <code>pipeline_run_cfr_matches</code>, and <code>pipeline_run_observations</code> store observation-level explainability.</p>
+        </div>
+        <div class="trace-card">
+          <h3>Evaluation Layer</h3>
+          <p><code>evaluation_logs.json</code> stores the final input, output, and scoring bundle used by the inspection evaluation dashboard.</p>
+          <p>This is the quality and score history the client sees per inspection.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>5. Route Handlers and Internal Project Mapping</h2>
+          <p>
+            These are the key project areas involved in the flow. This mapping is especially useful when the client asks
+            how <code>src/gui</code>, backend, and the database interact internally.
+          </p>
+        </div>
+      </div>
+
+      <div class="code-map">
+        <div class="code-block">
+          <h3>Frontend and Workflow Layer</h3>
+          <ul>
+            <li>src/gui/components/inspection-pages/NewInspection.tsx</li>
+            <li>src/gui/components/inspection/FileUploadZone.tsx</li>
+            <li>src/gui/app/api/inspections/[id]/generate-483/route.ts</li>
+            <li>src/gui/lib/db/inspection-service.ts</li>
+            <li>src/gui/lib/api.ts</li>
+            <li>src/gui/app/(dashboard)/evaluation/[inspectionId]/page.tsx</li>
+            <li>src/gui/components/evaluation/InspectionEvaluationDashboardView.tsx</li>
+          </ul>
+        </div>
+
+        <div class="code-block">
+          <h3>Backend AI and Validation Layer</h3>
+          <ul>
+            <li>backend/app/routers/ocr.py</li>
+            <li>backend/app/services/ocr_service.py</li>
+            <li>backend/app/routers/ai.py</li>
+            <li>backend/app/services/ai_service.py</li>
+            <li>backend/app/services/context_retrieval.py</li>
+            <li>backend/app/services/embedding_backend.py</li>
+            <li>backend/app/services/citation_service.py</li>
+            <li>backend/app/services/cfr_semantic_index.py</li>
+            <li>backend/app/services/grounding_semantic.py</li>
+            <li>backend/app/evaluation/evaluator.py</li>
+            <li>backend/app/services/evaluation_service.py</li>
+            <li>backend/app/services/pipeline_logging_service.py</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>6. Dashboard Output Model for the Client</h2>
+          <p>
+            The same pipeline supports multiple views: one for inspection quality, one for full explainability, and one
+            for overall analytics.
+          </p>
+        </div>
+      </div>
+
+      <div class="flow-grid" style="grid-template-columns: repeat(3, minmax(240px, 1fr));">
+        <div class="node output">
+          <div class="tag">Output</div>
+          <h3>Inspection Evaluation Dashboard</h3>
+          <ul>
+            <li>OCR accuracy</li>
+            <li>CFR match score</li>
+            <li>Evidence coverage</li>
+            <li>Hallucination flags</li>
+            <li>Template and overall score</li>
+          </ul>
+        </div>
+
+        <div class="node output">
+          <div class="tag">Output</div>
+          <h3>Pipeline Run Dashboard</h3>
+          <ul>
+            <li>Pipeline run metadata</li>
+            <li>Retrieved chunks per observation</li>
+            <li>CFR candidates and scores</li>
+            <li>Event timeline</li>
+            <li>Observation explainability</li>
+          </ul>
+        </div>
+
+        <div class="node output">
+          <div class="tag">Output</div>
+          <h3>Aggregate Evaluation Analytics</h3>
+          <ul>
+            <li>Structure rate</li>
+            <li>Grounding rate</li>
+            <li>Average OCR score</li>
+            <li>Average narrative overlap</li>
+            <li>Portfolio-wide quality view</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout">
+        <h3>Business interpretation</h3>
+        <p>
+          A strong grounded narrative supports higher-confidence business decisions: prevention plans, CAPA
+          prioritization, documentation fixes, training strategy, process validation work, and cost-effective facility or
+          quality-system improvements. A weakly grounded narrative is visibly flagged before it reaches that decision stage.
+        </p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>7. Final Client Narrative</h2>
+          <p>
+            Use the following sentence to conclude the walkthrough during the presentation.
+          </p>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <p>
+          <strong>
+            The platform converts raw inspection evidence into grounded, reviewable FDA 483 observations through a
+            governed pipeline: text extraction, note consolidation, route-level workflow validation, issue segmentation,
+            embedding-based retrieval, LLM drafting, evidence grounding, CFR and IOM reference alignment, metric
+            calculation, and dashboard-based explainability.
+          </strong>
+        </p>
+      </div>
+
+      <p class="footer-note">
+        Open this file directly in any modern browser. It is fully self-contained and does not depend on external scripts
+        or internet access.
+      </p>
+    </section>
+  </div>
+</body>
+</html>

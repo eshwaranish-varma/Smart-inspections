@@ -356,6 +356,69 @@ export async function assignEirDrafting(
   return updated;
 }
 
+export async function reassignAssociateInvestigator(
+  inspectionId: string,
+  assignedTo: string,
+  performedBy: string,
+  comments: string = ""
+): Promise<InspectionRecord> {
+  await ensureAuthTables();
+  const current = await getInspectionById(inspectionId);
+  if (!current) throw new Error("Inspection not found");
+  assertInspectionNotWorkflowArchived(current);
+  if (!current.assigned_to) {
+    throw new Error("Inspection has not been assigned yet");
+  }
+  if (["approved", "eir_approved", "closed"].includes(current.status)) {
+    throw new Error(`Cannot change associate investigator in status '${current.status}'`);
+  }
+  if (current.assigned_to === assignedTo) {
+    return current;
+  }
+
+  const assigneeCheck = await pool.query<{ id: string; first_name: string; last_name: string; email: string }>(
+    `SELECT id, first_name, last_name, email FROM users WHERE id = $1 AND role = 'investigator' AND is_verified = TRUE LIMIT 1`,
+    [assignedTo]
+  );
+  const newAssignee = assigneeCheck.rows[0];
+  if (!newAssignee) throw new Error("Selected associate investigator was not found");
+
+  const result = await pool.query<InspectionRecord>(
+    `UPDATE inspections SET assigned_to = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+    [assignedTo, inspectionId]
+  );
+  const updated = result.rows[0];
+  const newAssigneeName = `${newAssignee.first_name} ${newAssignee.last_name}`.trim() || newAssignee.email;
+  const defaultComment = `Associate investigator changed from ${current.assignee_name || "Unassigned"} to ${newAssigneeName}`;
+
+  await logWorkflowAction(
+    inspectionId,
+    "ASSOCIATE_REASSIGNED",
+    performedBy,
+    comments || defaultComment,
+    current.status,
+    current.status
+  );
+  await createNotification({
+    userId: assignedTo,
+    inspectionId,
+    type: "ASSIGNED",
+    title: "Associate investigator assignment updated",
+    message: `${current.title} is now assigned to you as associate investigator.`,
+  });
+  if (current.assigned_to) {
+    await createNotification({
+      userId: current.assigned_to,
+      inspectionId,
+      type: "ASSIGNED",
+      title: "Associate investigator assignment changed",
+      message: `${current.title} has been reassigned to another investigator.`,
+    });
+  }
+
+  return updated;
+}
+
 export async function mergeInspectionMetadata(
   inspectionId: string,
   patch: Record<string, unknown>

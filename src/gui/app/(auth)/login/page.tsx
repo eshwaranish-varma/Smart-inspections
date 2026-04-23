@@ -152,6 +152,12 @@ function LoginPageContent() {
             <div>
               <div className="mb-1.5 flex items-center justify-between">
                 <label className="text-sm font-medium text-[#282e63] dark:text-slate-200">Password</label>
+                <Link
+                  href={`/forgot-password${email ? `?email=${encodeURIComponent(email.trim().toLowerCase())}` : ""}`}
+                  className="text-xs font-semibold text-[#282e63] underline-offset-2 hover:underline dark:text-indigo-300"
+                >
+                  Forgot password?
+                </Link>
               </div>
               <input
                 type="password"

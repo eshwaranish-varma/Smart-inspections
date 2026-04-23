@@ -21,6 +21,8 @@ const monoRoot =
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  /** Smaller Docker images: `node server.js` in production Dockerfile */
+  output: "standalone",
   outputFileTracingRoot: monoRoot,
   experimental: {
     esmExternals: true,

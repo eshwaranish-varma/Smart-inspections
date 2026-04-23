@@ -1,0 +1,87 @@
+#!/bin/bash
+# Backend Dockerfile Optimization (Production)
+# Save as: backend/Dockerfile
+
+# ============================================================
+# STAGE 1: Builder - Install dependencies
+# ============================================================
+FROM python:3.11-slim as builder
+
+WORKDIR /build
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    libpq-dev \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements-prod.txt .
+
+# Create wheels (better layer caching for repeated builds)
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip wheel --no-cache-dir --no-deps --wheel-dir /build/wheels -r requirements-prod.txt
+
+# ============================================================
+# STAGE 2: Runtime - Minimal image with only runtime deps
+# ============================================================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install only runtime dependencies (OCR, database client, etc.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    tesseract-ocr=5.2.0-1.1 \
+    libtesseract-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Security: Create non-root user
+RUN useradd -m -u 1000 -s /sbin/nologin appuser
+
+# Copy pre-built wheels from builder stage
+COPY --from=builder --chown=appuser:appuser /build/wheels /wheels
+COPY --from=builder --chown=appuser:appuser /build/requirements-prod.txt .
+
+# Install Python dependencies from wheels (no compilation needed)
+RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements-prod.txt && \
+    rm -rf /wheels && \
+    pip cache purge
+
+# Copy application code
+COPY --chown=appuser:appuser app/ app/
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONHASHSEED=random \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
+# Switch to non-root user
+USER appuser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/api/health || exit 1
+
+# Expose port
+EXPOSE 8000
+
+# Production server with gunicorn
+CMD ["gunicorn", \
+     "app.main:app", \
+     "--workers", "2", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--bind", "0.0.0.0:8000", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "--log-level", "info", \
+     "--timeout", "120", \
+     "--max-requests", "1000", \
+     "--max-requests-jitter", "100", \
+     "--graceful-timeout", "30"]

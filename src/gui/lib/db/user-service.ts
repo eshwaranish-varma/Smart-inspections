@@ -138,6 +138,16 @@ async function runAuthSchemaMigrations(client: PoolClient): Promise<void> {
     );
   `);
   await client.query(`
+    CREATE TABLE IF NOT EXISTS password_reset_codes (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      code VARCHAR(10) NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
+      used BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  await client.query(`
     CREATE TABLE IF NOT EXISTS user_profiles (
       user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       address_line VARCHAR(255),
@@ -488,4 +498,69 @@ export async function findValidOtp(userId: string, code: string): Promise<UserRe
     [userId, code]
   );
   return result.rows[0] ?? null;
+}
+
+export async function storePasswordResetCode(
+  userId: string,
+  code: string,
+  expiresAt: Date
+): Promise<void> {
+  await ensureAuthTables();
+  await pool.query(
+    `
+      INSERT INTO password_reset_codes (user_id, code, expires_at, used)
+      VALUES ($1, $2, $3, FALSE)
+    `,
+    [userId, code, expiresAt]
+  );
+}
+
+export async function findValidPasswordResetCode(email: string, code: string): Promise<UserRecord | null> {
+  await ensureAuthTables();
+  const normalizedEmail = normalizeEmail(email);
+  const trimmedCode = code.trim();
+
+  const result = await pool.query<UserRecord>(
+    `
+      SELECT u.*
+      FROM password_reset_codes prc
+      JOIN users u ON u.id = prc.user_id
+      WHERE u.email = $1
+        AND prc.code = $2
+        AND prc.used = FALSE
+        AND prc.expires_at > NOW()
+      ORDER BY prc.created_at DESC
+      LIMIT 1
+    `,
+    [normalizedEmail, trimmedCode]
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function updateUserPassword(
+  userId: string,
+  passwordHash: string,
+  code: string
+): Promise<void> {
+  await ensureAuthTables();
+  const trimmedCode = code.trim();
+
+  await pool.query(
+    `
+      UPDATE users
+      SET password_hash = $2,
+          is_verified = TRUE,
+          verification_code = NULL,
+          verification_expires_at = NULL,
+          updated_at = NOW()
+      WHERE id = $1
+    `,
+    [userId, passwordHash]
+  );
+
+  await pool.query(
+    `UPDATE password_reset_codes SET used = TRUE WHERE user_id = $1 AND code = $2`,
+    [userId, trimmedCode]
+  );
 }
