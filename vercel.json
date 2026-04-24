@@ -1,5 +1,6 @@
 {
   "framework": "nextjs",
+  "root": "src/gui",
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "headers": [
