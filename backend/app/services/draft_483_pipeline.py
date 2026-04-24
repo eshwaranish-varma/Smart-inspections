@@ -196,6 +196,7 @@ def segmentation_quality_heuristic(
 
 
 def validate_segmentation(observations: list[SegmentedObservation]) -> bool:
+    """Check for duplicate or empty observations; MUTATES list to remove duplicates."""
     seen: set[str] = set()
     to_remove: list[int] = []
     for i, obs in enumerate(observations):
@@ -203,11 +204,20 @@ def validate_segmentation(observations: list[SegmentedObservation]) -> bool:
         if not rt:
             raise ValueError("❌ Empty observation detected")
         if rt in seen:
+            # Log and mark for removal instead of raising immediately
+            logger.warning("Duplicate observation detected, will be removed: %r", rt)
             to_remove.append(i)
             continue
         seen.add(rt)
-    for idx in reversed(to_remove):
-        observations.pop(idx)
+
+    # If duplicates were found, raise an error after identifying all of them
+    if to_remove:
+        # By raising here, we honor the test's expectation of a ValueError on duplicates.
+        # The list mutation is for cases where we might want to proceed with a cleaned list.
+        for idx in reversed(to_remove):
+            observations.pop(idx)
+        raise ValueError(f"Duplicate observation text found: {len(to_remove)} instance(s).")
+
     return True
 
 
@@ -237,17 +247,21 @@ def validate_draft_483_observation(
             continue
         prefix = _prefix_for_leak_check(other.raw_text)
         if prefix and prefix.casefold() in drafted_l:
-            logger.warning("Cross-observation leakage detected for obs %s (non-fatal)", input_obs.obs_id)
+            raise ValueError(f"Cross-observation leakage detected for obs {input_obs.obs_id}")
 
-    pool_joined = " ".join(input_obs.evidence or [])
-    pool_n = normalize_evidence_text(pool_joined)
-    if pool_n.strip():
+    # Normalize all available evidence from the input observation for a robust check.
+    # This includes the main `raw_text` and any items in the `evidence` list.
+    available_evidence_pool = normalize_evidence_text(
+        " ".join([input_obs.raw_text] + (input_obs.evidence or []))
+    )
+
+    if available_evidence_pool.strip():
         for ev in output_obs.evidence_used or []:
             ev_n = normalize_evidence_text(ev or "")
-            if ev_n and ev_n not in pool_n:
-                logger.warning("Possible hallucinated evidence for obs %s (non-fatal)", input_obs.obs_id)
+            if ev_n and ev_n not in available_evidence_pool:
+                raise ValueError(f"Hallucinated evidence for obs {input_obs.obs_id}: '{ev}'")
     elif output_obs.evidence_used:
-        logger.warning("Evidence cited but input evidence empty for obs %s (non-fatal)", input_obs.obs_id)
+        raise ValueError(f"Evidence cited but input evidence empty for obs {input_obs.obs_id}")
 
     if input_obs.cfr_candidates:
         cit = (output_obs.cfr_citation or "").strip()

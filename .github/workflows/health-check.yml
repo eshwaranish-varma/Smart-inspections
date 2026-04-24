@@ -18,7 +18,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "Checking backend API..."
-          curl -f -s https://smart-inspection-api.onrender.com/api/health || \
+          curl -f -s https://smartinspection-production-i8ete.ondigitalocean.app/api/health || \
             (echo "Backend health check failed" && exit 1)
 
       - name: Check Frontend Health
@@ -37,7 +37,7 @@ jobs:
       - name: Check API Response Time
         run: |
           echo "Measuring API response time..."
-          TIME=$( { time curl -s https://smart-inspection-api.onrender.com/api/health > /dev/null; } 2>&1 | grep real | awk '{print $2}')
+          TIME=$( { time curl -s https://smartinspection-production-i8ete.ondigitalocean.app/api/health > /dev/null; } 2>&1 | grep real | awk '{print $2}')
           echo "Response time: $TIME"
           
           # Alert if response time > 3 seconds
