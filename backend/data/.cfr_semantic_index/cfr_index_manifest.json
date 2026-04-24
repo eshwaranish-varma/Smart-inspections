@@ -1,0 +1,5 @@
+{
+  "fingerprint": "4d31fec9968c7b51",
+  "model": "sentence-transformers/all-MiniLM-L6-v2",
+  "n_docs": 8414
+}

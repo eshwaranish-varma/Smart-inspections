@@ -5,7 +5,6 @@ import Link from "next/link";
 import PipelineRunDashboard, {
   PIPELINE_RUN_STORAGE_KEY,
 } from "@/components/evaluation/PipelineRunDashboard";
-import PipelineStoredRunsDashboard from "@/components/evaluation/PipelineStoredRunsDashboard";
 import type { GenerateObservationsResponse } from "@/types/inspection";
 
 export default function PipelineRunPage() {
@@ -42,7 +41,7 @@ export default function PipelineRunPage() {
             href="/evaluation"
             className="mb-2 inline-flex text-sm text-slate-500 hover:text-navy-700 dark:text-slate-400 dark:hover:text-cyan-300"
           >
-            ← Evaluation
+            Back to evaluation
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Pipeline run dashboard</h1>
           <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-slate-400">
@@ -72,18 +71,16 @@ export default function PipelineRunPage() {
         ) : null}
       </div>
 
-      <div className="space-y-2">
+      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/50">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Stored runs (API)</h2>
-        <p className="max-w-3xl text-sm text-slate-600 dark:text-slate-400">
-          Aggregates and explainability from the FastAPI pipeline logging tables (PostgreSQL). Requires{" "}
-          <code className="rounded bg-slate-100 px-1 text-xs dark:bg-slate-800">data/pipeline_logging_schema.sql</code>{" "}
-          applied and successful generate-observations calls.
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-400">
+          API-backed pipeline analytics are hidden in this environment until production logging and database migrations
+          are confirmed. Use the browser snapshot below to review the most recent run locally.
         </p>
-        <PipelineStoredRunsDashboard />
       </div>
 
       <div className="border-t border-slate-200 pt-8 dark:border-white/10">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">This browser — last run</h2>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">This browser last run</h2>
         <p className="mb-4 max-w-3xl text-sm text-slate-600 dark:text-slate-400">
           Snapshot from session storage (no database). Generate a 483 from{" "}
           <Link href="/new-inspection" className="font-medium text-navy-700 underline dark:text-cyan-300">
@@ -116,7 +113,7 @@ export default function PipelineRunPage() {
             We evaluate each observation individually and classify outputs into pass, warning, or failed based on
             structural and evidentiary validation.
           </li>
-          <li>Confidence scores and failure reasons are computed by the pipeline—not raw model probabilities.</li>
+          <li>Confidence scores and failure reasons are computed by the pipeline, not raw model probabilities.</li>
           <li>We surface segmentation risks before interpreting model quality metrics.</li>
         </ul>
       </details>

@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS public.pipeline_runs, public.pipeline_run_observations, public.pipeline_run_chunks, public.pipeline_run_cfr_matches, public.pipeline_run_events CASCADE;
