@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Self
+from typing_extensions import Self
 
 from pydantic import AliasChoices, Field, HttpUrl, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
