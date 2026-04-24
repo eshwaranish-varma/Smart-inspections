@@ -18,6 +18,7 @@ from app.schemas.inspection import (
     DraftObservation,
     EIRNarrative,
     EIRPipelineNarrative,
+    InspectionMetadata,
     ObservationInput,
     ObservationOutput,
 )

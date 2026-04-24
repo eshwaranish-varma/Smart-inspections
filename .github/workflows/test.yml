@@ -69,34 +69,37 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: src/gui/package-lock.json
 
       - name: Install dependencies
-        working-directory: frontend
+        working-directory: src/gui
         run: npm ci
 
       - name: Lint with ESLint
-        working-directory: frontend
+        working-directory: src/gui
         run: npm run lint --if-present || true
         continue-on-error: true
 
       - name: Type check with TypeScript
-        working-directory: frontend
+        working-directory: src/gui
         run: npx tsc --noEmit || true
         continue-on-error: true
 
       - name: Run tests
-        working-directory: frontend
+        working-directory: src/gui
         run: npm test --if-present --watchAll=false --coverage || true
         continue-on-error: true
 
       - name: Build
-        working-directory: frontend
+        working-directory: src/gui
         run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
   docker-build:
     name: Docker Build Test
