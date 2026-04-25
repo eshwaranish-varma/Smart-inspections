@@ -17,9 +17,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "20"
           cache: "npm"
           cache-dependency-path: src/gui/package-lock.json
 
@@ -36,9 +36,15 @@ jobs:
         working-directory: src/gui
         run: npm run build
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: "1"
+          NEXT_OUTPUT_TRACING_ROOT: ${{ github.workspace }}/src/gui
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://smart-inspection.vercel.app' }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'build-placeholder' }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'https://example.com' }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://ci:ci@127.0.0.1:5432/ci' }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-jwt-secret-at-least-32-chars-0000' }}
 
   deploy:
     name: Deploy to Vercel
@@ -48,6 +54,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: src/gui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: src/gui
+        run: npm ci
 
       - name: Validate Vercel secrets
         run: |
@@ -75,9 +92,15 @@ jobs:
         working-directory: src/gui
         run: npm run build
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: "1"
+          NEXT_OUTPUT_TRACING_ROOT: ${{ github.workspace }}/src/gui
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://smart-inspection.vercel.app' }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'vercel-build-placeholder' }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'https://example.com' }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://ci:ci@127.0.0.1:5432/ci' }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'vercel-jwt-secret-placeholder-32min!!' }}
 
       - name: Deploy to Vercel
         working-directory: src/gui
@@ -89,20 +112,21 @@ jobs:
       - name: Health check
         run: |
           echo "Running health check..."
+          if [ -n "${{ secrets.FRONTEND_PRODUCTION_URL }}" ]; then
+            U="${{ secrets.FRONTEND_PRODUCTION_URL }}"
+          else
+            U="https://smart-inspection.vercel.app"
+          fi
           for i in {1..10}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              "https://smart-inspection.vercel.app" || echo "000")
-            
-            if [ "$STATUS" = "200" ]; then
-              echo "✓ Frontend is responding"
+            STATUS=$(curl -sL -o /dev/null -w "%{http_code}" "$U" || echo "000")
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "304" ] || [ "$STATUS" = "307" ] || [ "$STATUS" = "308" ]; then
+              echo "✓ Frontend is responding ($U → $STATUS)"
               exit 0
             fi
-            
-            echo "Health check attempt $i/10 - Status: $STATUS"
+            echo "Health check attempt $i/10 - Status: $STATUS - URL: $U"
             sleep 6
           done
-          
-          echo "⚠ Frontend health check failed. Check Vercel logs."
+          echo "⚠ Frontend health check failed. Set FRONTEND_PRODUCTION_URL in repo secrets to your live URL, or check Vercel/DO logs."
 
   notify:
     name: Notify on deployment

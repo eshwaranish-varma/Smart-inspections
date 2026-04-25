@@ -10,14 +10,33 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Quick backend checks before calling external deploy
+  preflight:
+    name: Backend tests (smoke)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install & pytest
+        env:
+          PYTHONPATH: backend
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest
+          pytest backend/tests/ -q
+
   build-and-deploy:
     name: Build & Deploy to Render
-    uses: ./.github/workflows/test.yml
-    with:
-      run_backend_tests: true
-      run_frontend_tests: false
-    secrets: inherit
-
+    needs: preflight
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -45,43 +64,43 @@ jobs:
       - name: Wait for deployment
         run: |
           echo "Deployment triggered. Checking status..."
-          
-          # Get deployment status
+
           for i in {1..60}; do
             STATUS=$(curl -s \
               -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
-              https://api.render.com/v1/services/${{ secrets.RENDER_BACKEND_SERVICE_ID }}/deploys \
+              "https://api.render.com/v1/services/${{ secrets.RENDER_BACKEND_SERVICE_ID }}/deploys" \
               | jq -r '.[] | select(.status == "live") | .id' | head -1)
-            
+
             if [ ! -z "$STATUS" ]; then
               echo "✓ Deployment successful!"
               exit 0
             fi
-            
+
             echo "Waiting... ($i/60)"
             sleep 5
           done
-          
+
           echo "⚠ Deployment status check timeout. Check Render dashboard."
           exit 0
 
       - name: Health check
         run: |
           echo "Running health check..."
+          if [ -n "${{ secrets.RENDER_API_HEALTH_URL }}" ]; then
+            H="${{ secrets.RENDER_API_HEALTH_URL }}"
+          else
+            H="https://smart-inspection-api.onrender.com/api/health"
+          fi
           for i in {1..10}; do
-            HEALTH=$(curl -s -o /dev/null -w "%{http_code}" \
-              "https://smart-inspection-api.onrender.com/api/health" || echo "000")
-            
-            if [ "$HEALTH" = "200" ]; then
-              echo "✓ Backend health check passed"
+            CODE=$(curl -sS -o /dev/null -w "%{http_code}" "$H" || echo "000")
+            if [ "$CODE" = "200" ]; then
+              echo "✓ Backend health check passed ($H)"
               exit 0
             fi
-            
-            echo "Health check attempt $i/10 - Status: $HEALTH"
+            echo "Health check attempt $i/10 - Status: $CODE"
             sleep 6
           done
-          
-          echo "⚠ Backend health check failed after retries. Check backend logs."
+          echo "⚠ Backend health check failed after retries. Set RENDER_API_HEALTH_URL secret to your full /api/health URL if it changed."
 
   notify:
     name: Notify on deployment

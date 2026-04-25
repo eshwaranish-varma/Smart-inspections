@@ -1,0 +1,45 @@
+# Validates that the Next.js app builds with "split deployment" style env
+# (public API URL + app URL) suitable for DigitalOcean or any host where the
+# browser calls FastAPI directly. Does not deploy — only CI smoke build.
+name: Build Frontend (DigitalOcean env smoke)
+
+on:
+  pull_request:
+    paths:
+      - "src/gui/**"
+      - ".github/workflows/build-frontend-digitalocean.yml"
+  push:
+    branches: [main, develop]
+    paths:
+      - "src/gui/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: src/gui/package-lock.json
+
+      - name: Install
+        working-directory: src/gui
+        run: npm ci
+
+      - name: Build (production public env)
+        working-directory: src/gui
+        run: npm run build
+        env:
+          NODE_ENV: production
+          # Mirror App Platform: NEXT_* must exist at build time
+          NEXT_TELEMETRY_DISABLED: "1"
+          NEXT_OUTPUT_TRACING_ROOT: ${{ github.workspace }}/src/gui
+          NEXT_PUBLIC_APP_URL: "https://example-frontend.ondigitalocean.app"
+          NEXT_PUBLIC_API_URL: "https://smartinspection-production-i8ete.ondigitalocean.app"
+          NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co"
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: "build_placeholder_key"
