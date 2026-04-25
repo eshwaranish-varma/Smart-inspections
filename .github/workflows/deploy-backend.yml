@@ -1,4 +1,4 @@
-name: Deploy Backend (Render)
+name: Deploy Backend (Render — optional)
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Quick backend checks before calling external deploy
+  # Quick backend checks before any external deploy hook
   preflight:
     name: Backend tests (smoke)
     runs-on: ubuntu-latest
@@ -40,20 +40,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate environment
+      # Only trigger Render when both secrets exist. If you use DigitalOcean / another host,
+      # leave these unset — the job skips Render and still runs the health check below.
+      - name: Check Render configuration
+        id: cfg
         run: |
-          echo "Checking required secrets..."
-          if [ -z "${{ secrets.RENDER_API_KEY }}" ]; then
-            echo "ERROR: RENDER_API_KEY not set"
-            exit 1
+          if [ -n "${{ secrets.RENDER_API_KEY }}" ] && [ -n "${{ secrets.RENDER_BACKEND_SERVICE_ID }}" ]; then
+            echo "use_render=true" >> "$GITHUB_OUTPUT"
+            echo "Render deploy: will trigger API deploy via Render."
+          else
+            echo "use_render=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping Render deploy: RENDER_API_KEY and/or RENDER_BACKEND_SERVICE_ID not set."
+            echo "This is normal when the API is hosted on DigitalOcean App Platform or elsewhere."
           fi
-          if [ -z "${{ secrets.RENDER_BACKEND_SERVICE_ID }}" ]; then
-            echo "ERROR: RENDER_BACKEND_SERVICE_ID not set"
-            exit 1
-          fi
-          echo "✓ All required secrets present"
 
       - name: Trigger Render deployment
+        if: steps.cfg.outputs.use_render == 'true'
         run: |
           curl --request POST \
             --url https://api.render.com/v1/services/${{ secrets.RENDER_BACKEND_SERVICE_ID }}/deploys \
@@ -62,6 +64,7 @@ jobs:
             --data '{"clearCache":"full"}'
 
       - name: Wait for deployment
+        if: steps.cfg.outputs.use_render == 'true'
         run: |
           echo "Deployment triggered. Checking status..."
 
@@ -83,24 +86,31 @@ jobs:
           echo "⚠ Deployment status check timeout. Check Render dashboard."
           exit 0
 
-      - name: Health check
+      - name: Backend health check
+        continue-on-error: true
+        env:
+          PRODUCTION_API_BASE: ${{ secrets.PRODUCTION_API_BASE }}
+          RENDER_API_HEALTH_URL: ${{ secrets.RENDER_API_HEALTH_URL }}
         run: |
-          echo "Running health check..."
-          if [ -n "${{ secrets.RENDER_API_HEALTH_URL }}" ]; then
-            H="${{ secrets.RENDER_API_HEALTH_URL }}"
+          # Full health URL, or base URL + /api/health, or this repo's DigitalOcean default
+          if [ -n "$RENDER_API_HEALTH_URL" ]; then
+            H="$RENDER_API_HEALTH_URL"
+          elif [ -n "$PRODUCTION_API_BASE" ]; then
+            H="${PRODUCTION_API_BASE%/}/api/health"
           else
-            H="https://smart-inspection-api.onrender.com/api/health"
+            H="https://smartinspection-production-i8ete.ondigitalocean.app/api/health"
           fi
-          for i in {1..10}; do
+          echo "GET $H"
+          for i in {1..5}; do
             CODE=$(curl -sS -o /dev/null -w "%{http_code}" "$H" || echo "000")
             if [ "$CODE" = "200" ]; then
-              echo "✓ Backend health check passed ($H)"
+              echo "✓ API health OK ($H)"
               exit 0
             fi
-            echo "Health check attempt $i/10 - Status: $CODE"
-            sleep 6
+            echo "Attempt $i/5 — HTTP $CODE"
+            sleep 3
           done
-          echo "⚠ Backend health check failed after retries. Set RENDER_API_HEALTH_URL secret to your full /api/health URL if it changed."
+          echo "⚠ Optional health check did not return 200. Set PRODUCTION_API_BASE or RENDER_API_HEALTH_URL if needed."
 
   notify:
     name: Notify on deployment
