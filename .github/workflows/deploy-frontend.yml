@@ -34,17 +34,24 @@ jobs:
 
       - name: Build
         working-directory: src/gui
-        run: npm run build
         env:
           NODE_ENV: production
           NEXT_TELEMETRY_DISABLED: "1"
           NEXT_OUTPUT_TRACING_ROOT: ${{ github.workspace }}/src/gui
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://smart-inspection.vercel.app' }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'build-placeholder' }}
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'https://example.com' }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://ci:ci@127.0.0.1:5432/ci' }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-jwt-secret-at-least-32-chars-0000' }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          export NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-https://smart-inspection-team.vercel.app}"
+          export NEXT_PUBLIC_SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL:-https://example.supabase.co}"
+          export NEXT_PUBLIC_SUPABASE_ANON_KEY="${NEXT_PUBLIC_SUPABASE_ANON_KEY:-build-placeholder}"
+          export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-https://example.com}"
+          export DATABASE_URL="${DATABASE_URL:-postgresql://ci:ci@127.0.0.1:5432/ci}"
+          export JWT_SECRET="${JWT_SECRET:-ci-jwt-secret-at-least-32-chars-0000}"
+          npm run build
 
   deploy:
     name: Deploy to Vercel
@@ -90,17 +97,24 @@ jobs:
 
       - name: Build for production
         working-directory: src/gui
-        run: npm run build
         env:
           NODE_ENV: production
           NEXT_TELEMETRY_DISABLED: "1"
           NEXT_OUTPUT_TRACING_ROOT: ${{ github.workspace }}/src/gui
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://smart-inspection.vercel.app' }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'vercel-build-placeholder' }}
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'https://example.com' }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://ci:ci@127.0.0.1:5432/ci' }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET || 'vercel-jwt-secret-placeholder-32min!!' }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          export NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-https://smart-inspection-team.vercel.app}"
+          export NEXT_PUBLIC_SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL:-https://example.supabase.co}"
+          export NEXT_PUBLIC_SUPABASE_ANON_KEY="${NEXT_PUBLIC_SUPABASE_ANON_KEY:-vercel-build-placeholder}"
+          export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-https://example.com}"
+          export DATABASE_URL="${DATABASE_URL:-postgresql://ci:ci@127.0.0.1:5432/ci}"
+          export JWT_SECRET="${JWT_SECRET:-vercel-jwt-secret-placeholder-32min!!}"
+          npm run build
 
       - name: Deploy to Vercel
         working-directory: src/gui

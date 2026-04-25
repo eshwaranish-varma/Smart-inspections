@@ -43,3 +43,5 @@ jobs:
           NEXT_PUBLIC_API_URL: "https://smartinspection-production-i8ete.ondigitalocean.app"
           NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co"
           NEXT_PUBLIC_SUPABASE_ANON_KEY: "build_placeholder_key"
+          DATABASE_URL: "postgresql://ci:ci@127.0.0.1:5432/ci"
+          JWT_SECRET: "ci-jwt-smoke-32-chars-minimum-0000"
