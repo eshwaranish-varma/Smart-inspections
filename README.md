@@ -37,9 +37,9 @@ The repository ships **one web client** (Next.js) and **one AI/API backend** (Fa
 │   Next.js GUI :3000     │ ───────────────────────►│ Next.js Route Handlers       │
 │  (dashboard, workflow)  │                         │  /api/* → Postgres (Supabase) │
 └─────────────────────────┘                         └──────────────────────────────┘
-         │                                                    │
-         │  Server routes & browser calls                     │
-         ▼                                                    ▼
+                                                              │
+                                                              │
+                                                              ▼
                                                     ┌──────────────────────────────┐
                                                     │  FastAPI :8000              │
                                                     │  AI, OCR, documents, library │
