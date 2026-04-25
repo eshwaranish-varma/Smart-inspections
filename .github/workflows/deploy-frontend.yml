@@ -147,11 +147,24 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     if: always()
+    # Never block the pipeline if Slack is misconfigured
+    continue-on-error: true
 
     steps:
+      - name: Check for Slack webhook
+        id: slack_cfg
+        run: |
+          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "Slack skipped: add repository secret SLACK_WEBHOOK_URL to enable notifications."
+          fi
+
       - name: Slack notification
         uses: slackapi/slack-github-action@v1
-        if: always()
+        if: always() && steps.slack_cfg.outputs.ok == 'true'
+        continue-on-error: true
         with:
           payload: |
             {

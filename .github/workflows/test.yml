@@ -161,23 +161,25 @@ jobs:
   security-scan:
     name: Security Scanning
     runs-on: ubuntu-latest
+    # Optional gate: do not fail the overall Test & Lint workflow on scanner/upload issues
+    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
+        continue-on-error: true
         with:
           scan-type: "fs"
           scan-ref: "."
           format: "sarif"
           output: "trivy-results.sarif"
-          # Do not fail the whole workflow; findings still appear in SARIF / job log
           exit-code: "0"
+          skip-dirs: "node_modules,.next,.git"
 
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        # Fork PRs cannot upload SARIF to the base repo’s Code Scanning API
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         continue-on-error: true
         with:

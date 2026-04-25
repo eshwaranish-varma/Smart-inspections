@@ -12,11 +12,15 @@ for (const name of [".env", ".env.local"]) {
   }
 }
 
-// In Docker (build context = src/gui only), repo root is the app dir — avoid tracing outside the image.
+// File tracing root: monorepo root for local/Docker, but on Vercel the deploy root is `src/gui`
+// — pointing at `../..` can break `output` tracing. Default to this app directory when VERCEL=1.
+const defaultTracingRoot = process.env.VERCEL
+  ? path.resolve(__dirname)
+  : path.join(__dirname, "..", "..");
 const monoRoot =
   process.env.NEXT_OUTPUT_TRACING_ROOT != null && process.env.NEXT_OUTPUT_TRACING_ROOT !== ""
     ? path.resolve(process.env.NEXT_OUTPUT_TRACING_ROOT)
-    : path.join(__dirname, "..", "..");
+    : defaultTracingRoot;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
