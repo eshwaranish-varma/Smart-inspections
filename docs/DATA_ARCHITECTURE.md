@@ -31,7 +31,7 @@ SQLAlchemy does **not** run the LLM or RAG; it **stores the inputs, retrieved ch
 - **FastAPI** — SQLAlchemy connects and writes pipeline + optional `title_21_sections` reads
 - **Next.js** — the `pg` pool (`src/gui/lib/db/client.ts`) connects for **users, inspections, workflow, `ai_runs`, `audit_logs`**, etc.
 
-**Optional Supabase Auth (browser sessions):** If `NEXT_PUBLIC_SUPABASE_URL` and an anon/publishable key are set, **Next.js middleware** (`src/gui/middleware.ts`) refreshes **Supabase Auth** cookies. The app can still use **email/password users in `public.users`** from the custom login flow; those are separate from Supabase Auth unless you integrate them explicitly.
+**Optional Supabase Auth (browser sessions):** If `NEXT_PUBLIC_SUPABASE_URL` and an anon/publishable key are set, **Next.js 16+ proxy** (`src/gui/proxy.ts` → `utils/supabase/middleware.ts`) refreshes **Supabase Auth** cookies. The app can still use **email/password users in `public.users`** from the custom login flow; those are separate from Supabase Auth unless you integrate them explicitly.
 
 **Summary:** “Supabase” = **Postgres host** + optional **Auth cookie refresh**. There is **no** Supabase-only “vector store” in the cloud for this codebase: **RAG indexes** for PDFs live in the **backend process** (FAISS / in-memory chunks) unless you add an external vector DB.
 

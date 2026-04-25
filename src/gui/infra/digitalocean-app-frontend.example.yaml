@@ -1,0 +1,67 @@
+# DigitalOcean App Platform — example spec for the Next.js frontend only
+# (when FastAPI is already running on a separate app / URL).
+#
+# 1) Connect this repo in the DO UI (Settings → spec), set `github.repo` and `github.branch` below, or
+#    paste env vars manually when using "Dockerfile" in App Platform.
+# 2) Set every YOUR_* / REPLACE placeholder value. Add SMTP_* in the UI for email OTP if used.
+# 3) On the FastAPI app, add your frontend origin to CORS_ORIGINS, e.g.
+#    CORS_ORIGINS=https://<your-frontend>.ondigitalocean.app,https://smartinspection-production-i8ete.ondigitalocean.app
+#    (include both if you call the API from the browser and from tools.)
+#
+# See: src/gui/env.production.digitalocean.example
+#
+name: smart-inspections-frontend
+region: nyc
+services:
+  - name: web
+    # Build context must be the Next.js app (matches Dockerfile COPY and next standalone paths)
+    source_dir: src/gui
+    dockerfile_path: Dockerfile
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    instance_count: 1
+    http_port: 3000
+    health_check:
+      http_path: /
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    routes:
+      - path: /
+    # github:
+    #   repo: your-org/202610-004-Team-Smart-Inspection
+    #   branch: main
+    #   deploy_on_push: true
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: PORT
+        value: "3000"
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://REPLACE_WITH_YOUR_FRONTEND_ODO_URL
+        scope: RUN_AND_BUILD_TIME
+      - key: NEXT_PUBLIC_API_URL
+        value: https://smartinspection-production-i8ete.ondigitalocean.app
+        scope: RUN_AND_BUILD_TIME
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        value: https://YOUR_PROJECT_REF.supabase.co
+        scope: RUN_AND_BUILD_TIME
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        value: your_anon_key
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: DATABASE_URL
+        value: postgresql://...
+        scope: RUN_TIME
+        type: SECRET
+      - key: JWT_SECRET
+        value: long_random_string
+        scope: RUN_TIME
+        type: SECRET
+      - key: BACKEND_API_URL
+        value: https://smartinspection-production-i8ete.ondigitalocean.app
+        scope: RUN_TIME
+        # Same host as NEXT_PUBLIC_API_URL so server route handlers and sync helpers resolve FastAPI.

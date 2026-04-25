@@ -45,6 +45,8 @@ jobs:
       - name: Run pytest
         env:
           PYTHONPATH: backend
+          # Pydantic settings require a valid postgres:// URI even when tests do not open DBs
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
         run: |
           pytest backend/tests/ -v --cov=backend/app --cov-report=xml --cov-report=term
 
@@ -96,12 +98,19 @@ jobs:
         working-directory: src/gui
         run: npm run build
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: "1"
+          # Monorepo: tracing root must be src/gui (matches Dockerfile NEXT_OUTPUT_TRACING_ROOT)
+          NEXT_OUTPUT_TRACING_ROOT: ${{ github.workspace }}/src/gui
+          # Defaults keep CI green when repository secrets are unset (fork PRs, local forks).
+          # Override in repo Settings → Secrets for a production-matching build.
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://ci-build.example.com' }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'https://ci-api.example.com' }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-build-placeholder' }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://ci:ci@127.0.0.1:5432/ci' }}
+          DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL || '' }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-jwt-secret-at-least-32-chars-0000' }}
 
   docker-build:
     name: Docker Build Test
@@ -120,6 +129,21 @@ jobs:
           file: ./backend/Dockerfile
           push: false
           tags: smart-inspection-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build frontend image (smoke)
+        uses: docker/build-push-action@v4
+        with:
+          context: ./src/gui
+          file: ./src/gui/Dockerfile
+          push: false
+          tags: smart-inspection-frontend:ci
+          build-args: |
+            NEXT_PUBLIC_APP_URL=https://ci-frontend.example.com
+            NEXT_PUBLIC_API_URL=https://ci-api.example.com
+            NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=ci-docker-build
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

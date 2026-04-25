@@ -18,17 +18,32 @@ jobs:
         continue-on-error: true
         run: |
           echo "Checking backend API..."
-          curl -f -s https://smartinspection-production-i8ete.ondigitalocean.app/api/health || \
-            (echo "Backend health check failed" && exit 1)
+          # Optional: set PRODUCTION_API_BASE in secrets to override (no trailing /api; health is at /api/health)
+          if [ -n "${{ secrets.PRODUCTION_API_BASE }}" ]; then
+            API="${{ secrets.PRODUCTION_API_BASE }}"
+          else
+            API="https://smartinspection-production-i8ete.ondigitalocean.app"
+          fi
+          curl -f -sS "$API/api/health" || (echo "Backend health check failed" && exit 1)
 
       - name: Check Frontend Health
         continue-on-error: true
         run: |
-          echo "Checking frontend..."
-          curl -f -s https://smart-inspection.vercel.app -I | head -n 1
+          # Set FRONTEND_PRODUCTION_URL in repository secrets (e.g. Vercel or DigitalOcean app URL)
+          F="${{ secrets.FRONTEND_PRODUCTION_URL }}"
+          if [ -z "$F" ]; then
+            echo "FRONTEND_PRODUCTION_URL not set – skipping dedicated frontend host check (optional)."
+            exit 0
+          fi
+          echo "Checking frontend: $F"
+          curl -fsS -I "$F" | head -n 1
 
       - name: Check Database Connection
         run: |
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "DATABASE_URL secret not set – skipping direct DB check."
+            exit 0
+          fi
           echo "Testing database connectivity..."
           psql "${{ secrets.DATABASE_URL }}" -c "SELECT NOW();" || \
             (echo "Database connection failed" && exit 1)
@@ -36,15 +51,14 @@ jobs:
 
       - name: Check API Response Time
         run: |
-          echo "Measuring API response time..."
-          TIME=$( { time curl -s https://smartinspection-production-i8ete.ondigitalocean.app/api/health > /dev/null; } 2>&1 | grep real | awk '{print $2}')
-          echo "Response time: $TIME"
-          
-          # Alert if response time > 3 seconds
-          SECONDS=$(echo $TIME | grep -o '[0-9]\+' | head -1)
-          if [ "$SECONDS" -gt 3 ]; then
-            echo "⚠ Slow API response detected"
+          if [ -n "${{ secrets.PRODUCTION_API_BASE }}" ]; then
+            API="${{ secrets.PRODUCTION_API_BASE }}"
+          else
+            API="https://smartinspection-production-i8ete.ondigitalocean.app"
           fi
+          echo "Measuring API response time: $API/api/health"
+          # Note: `time` output format varies; this is a best-effort log only
+          curl -sS -o /dev/null -w "HTTP time_total: %{time_total}s\n" "$API/api/health"
 
       # - name: Slack Notification
       #   if: always()

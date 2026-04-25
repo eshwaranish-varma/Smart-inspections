@@ -41,12 +41,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
+# App Platform and many hosts set PORT (e.g. 8080); default remains 3000 for local
 EXPOSE 3000
 
 ENV HOSTNAME=0.0.0.0 \
     PORT=3000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:3000/ || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+  CMD sh -c 'curl -fsS "http://127.0.0.1:${PORT:-3000}/" || exit 1'
 
 CMD ["node", "server.js"]
