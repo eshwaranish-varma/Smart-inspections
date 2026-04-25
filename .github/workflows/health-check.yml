@@ -46,23 +46,23 @@ jobs:
             echo "⚠ Slow API response detected"
           fi
 
-      - name: Slack Notification
-        if: always()
-        uses: slackapi/slack-github-action@v1
-        with:
-          payload: |
-            {
-              "text": "Health Check: ${{ job.status == 'success' && '✅ Passed' || '❌ Failed' }}",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Production Health Check*\n*Status:* ${{ job.status == 'success' && '✅ All Systems Operational' || '❌ Issues Detected' }}\n*Time:* <!date^${{ github.event.head_commit.timestamp }}^{date_pretty} {time_secs}|No date>"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      # - name: Slack Notification
+      #   if: always()
+      #   uses: slackapi/slack-github-action@v1
+      #   with:
+      #     payload: |
+      #       {
+      #         "text": "Health Check: ${{ job.status == 'success' && '✅ Passed' || '❌ Failed' }}",
+      #         "blocks": [
+      #           {
+      #             "type": "section",
+      #             "text": {
+      #               "type": "mrkdwn",
+      #               "text": "*Production Health Check*\n*Status:* ${{ job.status == 'success' && '✅ All Systems Operational' || '❌ Issues Detected' }}\n*Time:* <!date^${{ github.event.head_commit.timestamp }}^{date_pretty} {time_secs}|No date>"
+      #             }
+      #           }
+      #         ]
+      #       }
+      #   env:
+      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      #     SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
