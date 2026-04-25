@@ -21,8 +21,12 @@ const monoRoot =
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  /** Smaller Docker images: `node server.js` in production Dockerfile */
-  output: "standalone",
+  /**
+   * `standalone` is for Docker/self-host (`node server.js`). Vercel must use the default
+   * Next output; otherwise routes and /_next static assets often 404 on the edge.
+   * @see https://vercel.com/docs/frameworks/nextjs
+   */
+  ...(process.env.VERCEL ? {} : { output: "standalone" }),
   outputFileTracingRoot: monoRoot,
   experimental: {
     esmExternals: true,
