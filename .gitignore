@@ -252,3 +252,5 @@ yarn-error.log
 # Test output
 test-results/
 .screenshots/
+.vercel
+.env*.local
