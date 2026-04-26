@@ -31,7 +31,7 @@ your-repo/
     └── workflows/
         ├── test.yml                    ← Runs on every push (tests & security scans)
         ├── health-check.yml            ← Runs every 30 min (monitors uptime)
-        ├── deploy-backend.yml          ← Auto-deploys backend to Render
+        ├── deploy-backend.yml          ← Backend deployment workflow (align to your DigitalOcean setup)
         └── deploy-frontend.yml         ← Auto-deploys frontend to Vercel
 ```
 
@@ -67,7 +67,7 @@ your-repo/
 | Workflow | Trigger | Purpose | Duration |
 |----------|---------|---------|----------|
 | `test.yml` | Every push (main/develop) | Tests, linting, security scans | 5-10 min |
-| `deploy-backend.yml` | Push to main (backend/* changes) | Deploy to Render, run health checks | 15-25 min |
+| `deploy-backend.yml` | Push to main (backend/* changes) | Deploy backend, run health checks | 15-25 min |
 | `deploy-frontend.yml` | Push to main (`src/gui/*` changes) | Deploy to Vercel, run health checks | 5-10 min |
 | `health-check.yml` | Every 30 min (scheduled) | Monitor uptime, send Slack alerts | 2-3 min |
 
@@ -75,7 +75,7 @@ your-repo/
 
 | File | Purpose | Use When |
 |------|---------|----------|
-| `backend/Dockerfile.prod` | Optimized backend image | Using Render or Docker deployment |
+| `backend/Dockerfile.prod` | Optimized backend image | Using DigitalOcean or Docker deployment |
 | `src/gui/Dockerfile` | Frontend image definition | Using Docker Compose locally |
 | `docker-compose.prod.yml` | (in DOCKER_OPTIMIZATIONS.md) | Running entire stack locally |
 
@@ -85,7 +85,7 @@ your-repo/
 |------|---------|-------------|
 | `DEPLOYMENT_SETUP.sh` | One-time GitHub secret setup | First time setup only |
 | `HEALTH_CHECK.sh` | Manual health monitoring | On-call troubleshooting |
-| `vercel.json` | Vercel config (security headers) | Already configured, don't change |
+| `vercel.json` | Repository-root Vercel config for non-frontend deployment paths | Do not use this as the frontend project config; set the Vercel Root Directory to `src/gui` |
 | `.env.production` | Environment variables template | Reference only (use GitHub Secrets) |
 
 ---
@@ -94,10 +94,10 @@ your-repo/
 
 All these must be set via: `gh secret set NAME --body VALUE`
 
-### From Render
+### Backend hosting
 ```
-RENDER_API_KEY               # Get from https://dashboard.render.com/account
-RENDER_BACKEND_SERVICE_ID    # Found in service URL: services/{ID}
+# Backend deployment secrets depend on your DigitalOcean setup.
+# Keep backend host/domain values aligned with your live DigitalOcean API URL.
 ```
 
 ### From Supabase
@@ -113,7 +113,7 @@ DATABASE_URL                      # postgresql://... (with pooler)
 ```
 VERCEL_TOKEN                 # https://vercel.com/account/tokens
 VERCEL_PROJECT_ID          # From Vercel dashboard
-VERCEL_ORG_ID              # Optional, only for team accounts
+VERCEL_ORG_ID              # Required by this CI workflow together with VERCEL_PROJECT_ID
 ```
 
 ### Frontend runtime
@@ -124,6 +124,7 @@ NEXT_PUBLIC_API_URL           # Public backend base URL used by the Next.js app
 DATABASE_URL                  # PostgreSQL connection string used by server routes
 JWT_SECRET                    # JWT signing secret for server-side auth flows
 DATABASE_DIRECT_URL           # Optional direct Postgres URL if used in your environment
+BACKEND_API_URL               # Optional server-side backend origin for Next.js route handlers
 ```
 
 ### API Keys
@@ -153,7 +154,7 @@ $ git push origin main
    - Security scans
    ↓ (if all pass)
 3. deploy-backend.yml runs
-   - Triggers Render deployment
+   - Triggers backend deployment
    - Waits for service to be healthy
    - Notifies Slack
    ↓ (parallel with above)
@@ -189,7 +190,7 @@ $ git push origin main
 
 ### For SRE/Incident Response
 - [ ] Know the [incident playbook](PRODUCTION_DEPLOYMENT.md#incident-playbook)
-- [ ] Have access to all dashboards (Render, Vercel, Sentry)
+- [ ] Have access to all dashboards (DigitalOcean, Vercel, Sentry)
 - [ ] Understand database backup/restore process
 - [ ] Can rollback in < 5 minutes
 - [ ] Document all incidents
@@ -222,14 +223,14 @@ gh run view {RUN_ID}
 ### Verify Deployments Work
 ```bash
 # 1. Check deployment endpoints
-curl https://smart-inspection-api.onrender.com/api/health
+curl https://your-digitalocean-backend.example.com/api/health
 curl https://smart-inspection.vercel.app
 
 # 2. Run health check script
 bash HEALTH_CHECK.sh
 
 # 3. Check logs
-# Render: https://dashboard.render.com/services/{ID}/logs
+# Backend hosting logs: DigitalOcean dashboard or your backend host logs
 # Vercel: https://vercel.com/dashboard/deployments
 ```
 
@@ -265,15 +266,9 @@ gh pr create --fill
 
 ### Backend Won't Deploy
 ```bash
-# 1. Check Render logs
-curl -H "Authorization: Bearer $RENDER_API_KEY" \
-  https://api.render.com/v1/services/{ID}/logs | tail -20
-
-# 2. Check environment variables
-# https://dashboard.render.com/services/{ID}/environment
-
-# 3. Restart service
-# Dashboard → Settings → Restart Service
+# 1. Check backend logs in DigitalOcean
+# 2. Check backend environment variables in DigitalOcean
+# 3. Restart the backend service from your DigitalOcean control plane if needed
 ```
 
 ### Frontend Won't Deploy
@@ -289,6 +284,7 @@ cd src/gui && npm run build
 ```
 
 In Vercel, verify the project **Root Directory** is set to `src/gui` and the **Framework Preset** is **Next.js**.
+Also confirm the Vercel project is linked to the `src/gui` app rather than the repository root, because the repository-root `vercel.json` is not the frontend deployment target.
 
 ### Database Connection Fails
 ```bash
@@ -308,12 +304,12 @@ psql "$DATABASE_URL" -c "SELECT 1;"
 
 | Resource | URL |
 |----------|-----|
-| **Render Dashboard** | https://dashboard.render.com |
+| **DigitalOcean Dashboard** | https://cloud.digitalocean.com |
 | **Vercel Dashboard** | https://vercel.com/dashboard |
 | **Supabase Dashboard** | https://supabase.com/dashboard |
 | **GitHub Actions** | https://github.com/YOUR_ORG/smart-inspection/actions |
 | **GitHub Secrets** | https://github.com/YOUR_ORG/smart-inspection/settings/secrets/actions |
-| **Render Docs** | https://render.com/docs |
+| **DigitalOcean Docs** | https://docs.digitalocean.com |
 | **Vercel Docs** | https://vercel.com/docs |
 | **Supabase Docs** | https://supabase.com/docs |
 

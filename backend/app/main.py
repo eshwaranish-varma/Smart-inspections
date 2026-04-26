@@ -98,14 +98,60 @@ async def log_requests(request: Request, call_next):
 from app.routers import observations, ai, documents, ocr, library, citations, references, eval as eval_router  # noqa: E402
 from app.routers import pipeline_dashboard  # noqa: E402
 from app.routers import evaluation_dashboard  # noqa: E402
+from app.routers import eir_pipeline  # noqa: E402
 
-app.include_router(observations.router)
-app.include_router(ai.router)
-app.include_router(documents.router)
+# Routers that already embed /api/... in APIRouter.prefix (ocr, library) must not get a second /api prefix.
+app.include_router(observations.router, prefix="/api/observations", tags=["Observations"])
+app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
+app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
 app.include_router(ocr.router)
 app.include_router(library.router)
-app.include_router(citations.router)
-app.include_router(references.router)
-app.include_router(eval_router.router)
-app.include_router(pipeline_dashboard.router)
-app.include_router(evaluation_dashboard.router)
+app.include_router(citations.router, prefix="/api/citations", tags=["Citations"])
+app.include_router(references.router, prefix="/api/references", tags=["References"])
+app.include_router(eval_router.router, prefix="/api/eval", tags=["Evaluation"])
+app.include_router(pipeline_dashboard.router, prefix="/api/evaluation", tags=["Pipeline evaluation"])
+app.include_router(evaluation_dashboard.router, prefix="/api/evaluation", tags=["Evaluation Dashboard"])
+app.include_router(eir_pipeline.router, prefix="/api/eir-pipeline", tags=["EIR 1:1 Pipeline"])
+
+
+@app.get("/")
+async def root():
+    return {"message": "Smart Inspections API", "version": "1.0.0", "status": "running"}
+
+
+@app.get("/health")
+async def health_root():
+    """Root-level health check for Render and load balancers."""
+    return {"status": "ok"}
+
+
+@app.get("/api/health")
+async def health():
+    kb = get_kb()
+    return {"status": "healthy", "kb_loaded": kb is not None and kb.is_initialized}
+
+
+@app.get("/health/db")
+async def health_db():
+    """Verify PostgreSQL connectivity (e.g. Supabase)."""
+    engine = get_engine_instance()
+    if engine is None:
+        logger.error("Database health check failed: engine not registered")
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unhealthy", "database": "engine_not_initialized"},
+        )
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "connected"}
+    except Exception as e:
+        logger.exception("Database health check failed")
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unhealthy",
+                "database": "connection_failed",
+                "detail": str(e),
+            },
+        )

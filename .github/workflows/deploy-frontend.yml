@@ -94,6 +94,9 @@ jobs:
             --environment production \
             --token ${{ secrets.VERCEL_TOKEN }}
         working-directory: src/gui
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Build for production
         working-directory: src/gui
@@ -122,6 +125,7 @@ jobs:
           vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Health check
         run: |

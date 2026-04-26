@@ -17,9 +17,9 @@ GitHub Actions (automated CI/CD)
     ├─→ Docker Build Validation
     ├─→ Security Scans
     ↓
-Render (FastAPI Backend)          Vercel (Next.js Frontend)
+DigitalOcean (FastAPI Backend)   Vercel (Next.js Frontend)
     ↓                                    ↓
-https://smart-inspection-api.onrender.com   https://smart-inspection.vercel.app
+https://your-digitalocean-backend.example.com   https://smart-inspection.vercel.app
     ↓                                    ↓
     └──────────────┬──────────────┘
                    ↓
@@ -88,22 +88,15 @@ gh run list --workflow=deploy-frontend.yml
 
 ## 📋 Manual Setup (if DEPLOYMENT_SETUP.sh doesn't work)
 
-### 1. Create Render Configuration
+### 1. Create DigitalOcean Backend Configuration
 
 ```bash
-# 1. Go to https://dashboard.render.com
-# 2. Click "Create a New Service"
-# 3. Select "Web Service"
-# 4. Connect GitHub repo
-# 5. Configure:
-#    Name: smart-inspection-backend
-#    Runtime: Docker
-#    Root Directory: backend/
-#    Plan: Standard ($7/month)
-# 6. Get your SERVICE_ID from URL
+# 1. Open your DigitalOcean project or backend service
+# 2. Confirm the backend app path is backend/
+# 3. Confirm the production start command and env vars are set there
+# 4. Confirm the public backend URL that the frontend should call
 
-RENDER_SERVICE_ID="srv_xxxxx"
-RENDER_API_KEY="rnd_xxxxx"  # from Account Settings
+BACKEND_BASE_URL="https://your-digitalocean-backend.example.com"
 ```
 
 ### 2. Create Vercel Configuration
@@ -115,6 +108,7 @@ RENDER_API_KEY="rnd_xxxxx"  # from Account Settings
 # 4. Configure:
 #    Framework: Next.js
 #    Root Directory: src/gui
+#    Use the src/gui app, not the repository root vercel.json
 #    Node Version: 18.x
 # 5. Get your PROJECT_ID and ORG_ID
 
@@ -140,15 +134,16 @@ DATABASE_URL="postgresql://postgres.xxxxx:pwd@pooler.supabase.com:6543/postgres"
 
 ```bash
 # Run for each secret
-gh secret set RENDER_API_KEY --body "$RENDER_API_KEY"
-gh secret set RENDER_BACKEND_SERVICE_ID --body "$RENDER_SERVICE_ID"
 gh secret set VERCEL_TOKEN --body "$VERCEL_TOKEN"
 gh secret set VERCEL_PROJECT_ID --body "$VERCEL_PROJECT_ID"
+gh secret set VERCEL_ORG_ID --body "$VERCEL_ORG_ID"
 gh secret set DATABASE_URL --body "$DATABASE_URL"
 gh secret set SUPABASE_URL --body "$SUPABASE_URL"
 gh secret set SUPABASE_KEY --body "$SUPABASE_KEY"
 gh secret set NEXT_PUBLIC_SUPABASE_URL --body "$SUPABASE_URL"
 gh secret set NEXT_PUBLIC_SUPABASE_ANON_KEY --body "$SUPABASE_ANON_KEY"
+gh secret set NEXT_PUBLIC_API_URL --body "$BACKEND_BASE_URL"
+gh secret set JWT_SECRET --body "$JWT_SECRET"
 gh secret set OPENAI_API_KEY --body "$OPENAI_API_KEY"
 gh secret set GOOGLE_API_KEY --body "$GOOGLE_API_KEY"
 ```
@@ -172,7 +167,7 @@ git push origin main
 # 3. GitHub Actions automatically:
 #    - Runs tests
 #    - Builds Docker images
-#    - Deploys to Render & Vercel
+#    - Deploys frontend and runs CI checks
 #    - Runs health checks
 #    - Notifies Slack
 
@@ -183,10 +178,8 @@ gh run list --workflow=*.yml
 ### Manual Deployment (if needed)
 
 ```bash
-# Render Backend
-curl -X POST \
-  -H "Authorization: Bearer $RENDER_API_KEY" \
-  https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys
+# Backend
+# Trigger or verify backend deployment from your DigitalOcean setup
 
 # Vercel Frontend
 vercel --prod --token $VERCEL_TOKEN
@@ -201,7 +194,7 @@ vercel --prod --token $VERCEL_TOKEN
 | Service | Dashboard | Check |
 |---------|-----------|-------|
 | **Tests** | https://github.com/YOUR_ORG/smart-inspection/actions | Green checkmarks |
-| **Backend** | https://dashboard.render.com | Service status |
+| **Backend** | https://cloud.digitalocean.com | Service status |
 | **Frontend** | https://vercel.com/smart-inspection/deployments | Deployments tab |
 | **Database** | Supabase. Project Settings | CPU/Memory graphs |
 | **Errors** | https://sentry.io (if configured) | Error rates |
@@ -210,7 +203,7 @@ vercel --prod --token $VERCEL_TOKEN
 
 ```bash
 # Backend
-curl -X GET https://smart-inspection-api.onrender.com/api/health
+curl -X GET https://your-digitalocean-backend.example.com/api/health
 # Expected: {"status": "healthy"}
 
 # Frontend
@@ -234,7 +227,7 @@ bash HEALTH_CHECK.sh
 **Immediate (0-5 minutes):**
 ```bash
 # Check status
-curl https://smart-inspection-api.onrender.com/api/health
+curl https://your-digitalocean-backend.example.com/api/health
 curl https://smart-inspection.vercel.app
 
 # View recent deployments
@@ -246,8 +239,8 @@ gh run view {RUN_ID}
 
 **Investigation (5-15 minutes):**
 ```bash
-# View Render logs
-# Dashboard → Services → smart-inspection-backend → Logs
+# View backend logs
+# DigitalOcean dashboard → your backend service → Logs
 
 # View Vercel logs
 # Dashboard → smart-inspection → Deployments → select recent
@@ -267,7 +260,7 @@ git push origin main
 # Wait for redeployment
 
 # Option 2: Rollback deployment
-# Render: Dashboard → Deployments → select previous → Deploy
+# Backend: use your DigitalOcean rollback or redeploy flow
 # Vercel: Dashboard → Deployments → select previous → Promote to Production
 
 # Option 3: Restore database backup
@@ -285,7 +278,7 @@ Typical deployment takes:
 | GitHub Push | 0 sec | Code synchronized |
 | Tests Run | 2-5 min | Includes Python + Node tests |
 | Build Docker | 3-5 min | Cached layers speed this up |
-| Render Backend Deploy | 2-10 min | Service starts on port 8000 |
+| Backend Deploy | 2-10 min | Service starts on port 8000 |
 | Vercel Frontend Deploy | 1-3 min | CDN propagation: up to 5 min |
 | Health Checks | 1-2 min | Verify services are responding |
 | **Total** | **~10-25 min** | Usually completes in < 15 min |
@@ -299,7 +292,7 @@ Typical deployment takes:
 - [ ] Database password strong (>16 chars, mixed case/numbers)
 - [ ] CORS origins restricted to your domains
 - [ ] API keys rotated quarterly
-- [ ] SSL/TLS enforced (Render + Vercel handle this)
+- [ ] SSL/TLS enforced for backend and frontend
 - [ ] Backups enabled (Supabase auto-backup)
 - [ ] Monitoring enabled (Sentry, UptimeRobot)
 - [ ] Rate limiting configured (if needed)
@@ -313,7 +306,7 @@ Typical deployment takes:
 
 1. **Check resource usage:**
    ```bash
-   # Render dashboard → Services → Logs
+   # DigitalOcean dashboard → backend service → Logs
    # Look for CPU/Memory spikes
    ```
 
@@ -330,8 +323,7 @@ Typical deployment takes:
 
 3. **Scale up instance:**
    ```bash
-   # Render Dashboard → Services → Plan
-   # Upgrade from Standard to Pro ($25/month)
+   # DigitalOcean dashboard → backend service sizing/settings
    ```
 
 4. **Add caching:**
@@ -369,7 +361,7 @@ Typical deployment takes:
 
 | Topic | Link |
 |-------|------|
-| **Render Docs** | https://render.com/docs |
+| **DigitalOcean Docs** | https://docs.digitalocean.com |
 | **Vercel Docs** | https://vercel.com/docs |
 | **Supabase Docs** | https://supabase.com/docs |
 | **FastAPI Deploy** | https://fastapi.tiangolo.com/deployment |
@@ -403,7 +395,7 @@ Before going live, complete these in order:
 # Phase 2: Initial Deployment (Day 2)
 ☐ Push to main
 ☐ Monitor GitHub Actions → all green
-☐ Verify Render health check passing
+☐ Verify backend health check passing
 ☐ Verify Vercel deployment successful
 ☐ Test API endpoints manually
 
