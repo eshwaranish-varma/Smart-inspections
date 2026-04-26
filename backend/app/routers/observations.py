@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse
 
 from app.config import settings
 
-router = APIRouter()
+router = APIRouter(prefix="/observations", tags=["Observations"])
 
 
 def _title21_csv_path() -> Path:
