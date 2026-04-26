@@ -18,10 +18,11 @@ your-repo/
 │   └── app/
 │       ├── main.py                     ← Must have /api/health endpoint
 │       └── ...
-├── frontend/
-│   ├── Dockerfile.prod                 ← Optimized production build
-│   ├── vercel.json                     ← Security headers (already configured)
-│   └── package.json
+├── src/
+│   └── gui/
+│       ├── Dockerfile                  ← Frontend container build
+│       ├── package.json                ← Next.js frontend package manifest
+│       └── next.config.js              ← Frontend runtime/build config
 ├── docker/
 │   ├── nginx/
 │   │   └── nginx.conf                  ← CORS & routing (update if needed)
@@ -67,7 +68,7 @@ your-repo/
 |----------|---------|---------|----------|
 | `test.yml` | Every push (main/develop) | Tests, linting, security scans | 5-10 min |
 | `deploy-backend.yml` | Push to main (backend/* changes) | Deploy to Render, run health checks | 15-25 min |
-| `deploy-frontend.yml` | Push to main (frontend/* changes) | Deploy to Vercel, run health checks | 5-10 min |
+| `deploy-frontend.yml` | Push to main (`src/gui/*` changes) | Deploy to Vercel, run health checks | 5-10 min |
 | `health-check.yml` | Every 30 min (scheduled) | Monitor uptime, send Slack alerts | 2-3 min |
 
 ### Docker Files
@@ -75,7 +76,7 @@ your-repo/
 | File | Purpose | Use When |
 |------|---------|----------|
 | `backend/Dockerfile.prod` | Optimized backend image | Using Render or Docker deployment |
-| `frontend/Dockerfile.prod` | Optimized frontend image | Using Docker Compose locally |
+| `src/gui/Dockerfile` | Frontend image definition | Using Docker Compose locally |
 | `docker-compose.prod.yml` | (in DOCKER_OPTIMIZATIONS.md) | Running entire stack locally |
 
 ### Configuration & Scripts
@@ -113,6 +114,16 @@ DATABASE_URL                      # postgresql://... (with pooler)
 VERCEL_TOKEN                 # https://vercel.com/account/tokens
 VERCEL_PROJECT_ID          # From Vercel dashboard
 VERCEL_ORG_ID              # Optional, only for team accounts
+```
+
+### Frontend runtime
+```
+NEXT_PUBLIC_SUPABASE_URL      # Supabase project URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY # Supabase anon/publishable key
+NEXT_PUBLIC_API_URL           # Public backend base URL used by the Next.js app
+DATABASE_URL                  # PostgreSQL connection string used by server routes
+JWT_SECRET                    # JWT signing secret for server-side auth flows
+DATABASE_DIRECT_URL           # Optional direct Postgres URL if used in your environment
 ```
 
 ### API Keys
@@ -271,11 +282,13 @@ curl -H "Authorization: Bearer $RENDER_API_KEY" \
 vercel logs -f smart-inspection-frontend
 
 # 2. Check build command succeeds locally
-cd frontend && npm run build
+cd src/gui && npm run build
 
 # 3. Check environment variables
 # https://vercel.com/smart-inspection/settings/environment-variables
 ```
+
+In Vercel, verify the project **Root Directory** is set to `src/gui` and the **Framework Preset** is **Next.js**.
 
 ### Database Connection Fails
 ```bash

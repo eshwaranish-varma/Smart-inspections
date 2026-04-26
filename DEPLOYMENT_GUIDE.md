@@ -79,15 +79,17 @@ git push origin main
 1. Log in to [Vercel](https://vercel.com)
 2. **Add New Project**
 3. Import from Git (select your repo)
-4. **Framework**: Vite
-5. **Root Directory**: `frontend/`
+4. **Framework**: Next.js
+5. **Root Directory**: `src/gui`
 6. **Build Command**: `npm run build`
-7. **Output Directory**: `dist`
+7. **Output Directory**: leave blank so Vercel uses the Next.js default
 8. Environment Variables:
    ```
-   VITE_API_BASE_URL=https://your-backend.onrender.com
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_anon_key
+   NEXT_PUBLIC_API_URL=https://your-backend.onrender.com
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+   DATABASE_URL=postgresql://...
+   JWT_SECRET=your_jwt_secret
    ```
 9. **Deploy**
 
@@ -156,7 +158,6 @@ data/raw/*.pdf
 
 - [ ] `backend/.dockerignore` excludes `/data`, `/artifacts`
 - [ ] `backend/requirements-prod.txt` created and tested locally
-- [ ] `frontend/.vercelignore` excludes non-essential files
 - [ ] `vercel.json` created with correct settings
 - [ ] Environment variables configured in Render & Vercel
 - [ ] Backend deployed and `/health` endpoint returns 200
@@ -176,7 +177,7 @@ data/raw/*.pdf
 
 ### "Frontend can't reach backend"
 - Check `CORS_ORIGINS` in Render environment
-- Verify frontend `VITE_API_BASE_URL` matches Render URL
+- Verify frontend `NEXT_PUBLIC_API_URL` matches the backend URL
 - Check Render logs: `render.com → Dashboard → Logs`
 
 ### "RAG data not loading"

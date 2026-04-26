@@ -114,7 +114,7 @@ RENDER_API_KEY="rnd_xxxxx"  # from Account Settings
 # 3. Import your GitHub repository
 # 4. Configure:
 #    Framework: Next.js
-#    Root Directory: frontend/
+#    Root Directory: src/gui
 #    Node Version: 18.x
 # 5. Get your PROJECT_ID and ORG_ID
 

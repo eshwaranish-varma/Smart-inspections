@@ -1,7 +1,7 @@
 {
   "framework": "nextjs",
-  "buildCommand": "cd src/gui && npm run build",
-  "installCommand": "cd src/gui && npm install",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
   "headers": [
     {
       "source": "/api/(.*)",
