@@ -1,10 +1,11 @@
 from fastapi import APIRouter, UploadFile, File, Form
 from app.services.ocr_service import OCRService
 
-router = APIRouter()
+# /api/ocr — must not use an empty path on an un-prefixed router (FastAPI: "Prefix and path cannot be both empty").
+router = APIRouter(prefix="/api/ocr", tags=["OCR"])
 
 
-@router.post("")
+@router.post("/")
 async def process_ocr(
     file: UploadFile = File(...),
     is_handwritten: bool = Form(False),

@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 from app.deps import get_db
 from app.models.database import SavedDocument
 
-router = APIRouter()
+# /api/library/* — same rule as ocr: no APIRouter() + get("")/post("").
+router = APIRouter(prefix="/api/library", tags=["Document Library"])
 
 # Rows that still represent in-flight drafting (shown in Document Library "active drafts").
 ACTIVE_SAVED_DOCUMENT_STATUSES = ("draft", "in_progress", "under_review")
@@ -81,13 +82,13 @@ def _latest_active_per_firm_fei(db: Session) -> list[SavedDocument]:
     )
 
 
-@router.get("")
+@router.get("/")
 async def list_documents(db: Session = Depends(get_db)):
     docs = _latest_active_per_firm_fei(db)
     return [_serialize_saved_document(d) for d in docs]
 
 
-@router.post("")
+@router.post("/")
 async def save_document(data: dict, db: Session = Depends(get_db)):
     raw_status = (data.get("status") or "draft").strip().lower()
     if raw_status not in ACTIVE_SAVED_DOCUMENT_STATUSES:
