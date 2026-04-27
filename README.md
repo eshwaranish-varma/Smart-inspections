@@ -383,7 +383,7 @@ npm run dev                     # uses Next 16 with --webpack (see package.json)
 
 Interactive API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-**Vercel:** Use **Framework Preset** **Next.js**. Set **Root Directory** to the **repository root** (leave empty) so the root `vercel.json` can target `src/gui`, **or** set **Root Directory** to `src/gui` if that path exists in the connected branch—see `README_DEPLOYMENT.md` if Vercel reports that `src/gui` does not exist. Configure environment variables from `.env.example`, including `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_API_URL`, `DATABASE_URL`, and `JWT_SECRET`; add `BACKEND_API_URL` server-side if your deployment needs a separate backend origin.
+**Vercel:** Use **Framework Preset** **Next.js** and set **Root Directory** to **`src/gui`** (see `README_DEPLOYMENT.md`). Configure environment variables from `.env.example`, including `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_API_URL`, `DATABASE_URL`, and `JWT_SECRET`; add `BACKEND_API_URL` server-side if your deployment needs a separate backend origin.
 
 ---
 

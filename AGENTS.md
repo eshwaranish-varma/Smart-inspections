@@ -95,10 +95,7 @@ Do not rename unrelated secrets.
 Do not restructure the workflow unless needed for correctness.
 
 ### Step 3: Validate Vercel config assumptions
-Review `vercel.json`.
-
-If it is safe as-is, leave it alone.
-Only edit it if there is a real conflict with deploying from `src/gui`.
+If a root `vercel.json` exists, review it. Do not use legacy `version: 2` / `builds`-only config that produces empty deploys; remove or fix it when deploying from `src/gui`.
 
 Do not invent unnecessary Vercel settings.
 
@@ -107,7 +104,7 @@ If deployment docs mention the wrong frontend folder or incorrect deployment ste
 
 Documentation must clearly say:
 - frontend source lives in `src/gui`
-- Vercel **Root Directory** is either **repository root** (empty) with root `vercel.json`, **or** `src/gui` when that path exists in the deployed branch (see `README_DEPLOYMENT.md`)
+- Vercel **Root Directory** should be **`src/gui`** when that path exists in the deployed branch (see `README_DEPLOYMENT.md`); a root `vercel.json` is optional and must not break the Next.js build
 - required frontend env vars must include `NEXT_PUBLIC_API_URL`
 
 Do not rewrite docs broadly.

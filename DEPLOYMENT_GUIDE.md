@@ -56,7 +56,7 @@ git push origin main
 3. Import from Git (select your repo)
 4. **Framework**: Next.js
 5. **Root Directory** (pick one):
-   - **Repository root (recommended with this repo):** leave **Root Directory** empty. The root `vercel.json` selects `src/gui` for the build; the clone must include the `src/` tree.
+   - **Root Directory:** set to **`src/gui`** so install and `next build` run in the Next.js app. The connected Git branch must include that path.
    - **Subfolder:** set **Root Directory** to `src/gui` only if that path exists on the branch you deploy (see it on GitHub at the repo root). Use `npm run build` with default output.
 6. **Build Command**: `npm run build` (or Vercel’s default; it resolves from the app’s `package.json`)
 7. **Output Directory**: leave blank so Vercel uses the Next.js default
@@ -72,7 +72,7 @@ git push origin main
 9. **Deploy**
 
 Important:
-- Either leave **Root Directory** empty and use the repository `vercel.json`, **or** set it to `src/gui` if that folder exists in Git (see `README_DEPLOYMENT.md` if you see *Root Directory does not exist*).
+- Set **Root Directory** to **`src/gui`** (see `README_DEPLOYMENT.md` if you see *Root Directory does not exist* in Git).
 - Keep the **Framework Preset** as **Next.js**.
 
 ---

@@ -85,7 +85,7 @@ your-repo/
 |------|---------|-------------|
 | `DEPLOYMENT_SETUP.sh` | One-time GitHub secret setup | First time setup only |
 | `HEALTH_CHECK.sh` | Manual health monitoring | On-call troubleshooting |
-| `vercel.json` | Points the Next builder at `src/gui/package.json` when the Vercel **Root Directory** is the **repository root** (empty) | If you instead set Root Directory to `src/gui`, this file is not used for that app; see *Frontend Won’t Deploy* below. |
+| *(root `vercel.json` removed)* | — | A legacy `builds`-only `vercel.json` at the repo root caused **empty** Vercel builds (`vercel build` in ~200ms, no `next build`). Use **Root Directory** `src/gui` and a normal Next.js build; do not reintroduce `version: 2` / `builds` config unless you use current Vercel monorepo docs. |
 | `.env.production` | Environment variables template | Reference only (use GitHub Secrets) |
 
 ---
@@ -284,18 +284,21 @@ cd src/gui && npm run build
 ```
 
 **Vercel Root Directory and this repo (important)**  
-The Next.js app lives in **`src/gui`**. The repository root has a `vercel.json` that points the legacy Next builder at `src/gui/package.json`. You can deploy in one of these ways; **do not mix them in a way that double-nests the path**.
+The Next.js app lives in **`src/gui`** (the only `package.json` for the frontend). **Set Root Directory to `src/gui`**, **Framework** Next.js, default install/build. Do not add a root `vercel.json` with legacy `builds` — it can produce empty deploys and **404** on the production domain.
 
 | Approach | Vercel → Project → General → *Root Directory* | Notes |
 |----------|----------------------------------------------|--------|
-| **A (recommended for this monorepo)** | Leave **empty** (repository root / `.`) | The clone must contain `src/`. The root `vercel.json` `builds` entry selects `src/gui` for `@vercel/next`. **Framework Preset** can be **Next.js**; override **Install/Build** only if you change the layout. |
-| **B** | `src/gui` | Valid only if that folder exists **in the connected Git branch** (confirm on GitHub: you see `src/gui` at the repo root). Vercel runs install/build *inside* that directory; you do not need a second `src/gui` in the path. If this setting fails, the remote repo or branch is missing the folder, or the path/casing is wrong (Linux is case-sensitive). |
+| **Recommended** | `src/gui` | Vercel runs `npm install` and `next build` here. **Production** build logs should show a full Next.js build (minutes), not a sub-second `vercel build` with no output. |
+| **Not recommended** | Empty (repo root) | Would require a valid modern monorepo setup; the previous root `vercel.json` with only `builds` was **removed** because it no longer produced a real app output on current Vercel. |
+
+**Symptom: `404 NOT_FOUND` / `Code: NOT_FOUND` on `*.vercel.app` with `X-Vercel-Error: NOT_FOUND` (and build logs show no real `npm install` or `next build`)**  
+The deployment is **Ready** but no app was built—usually **Root Directory** is `.` while the Next app only lives under `src/gui`. **Fix:** set **Settings → General → Root Directory** to **`src/gui`**, save, then **Redeploy** the latest production deployment. Confirm new build logs show `Installing dependencies` and `next build`.
 
 **Error: *The specified Root Directory "src/gui" does not exist***  
 Vercel read your Git deployment and did **not** find a `src/gui` path at the repository root. **Fix (pick one):**
 
-1. **Use repository root (simplest with this `vercel.json`)**  
-   - **Settings → General → Root Directory** → clear it (use **Repository Root**), save, redeploy.  
+1. **Use repository root (only if you have a different monorepo config)**  
+   - **Settings → General → Root Directory** → clear it (use **Repository Root**), save, redeploy. (This repo no longer ships a root `vercel.json`; prefer **Root Directory = `src/gui`**.)  
 2. **Keep Root Directory = `src/gui` only if the path really exists in Git**  
    - In the browser, open the same repo/branch that Vercel uses and confirm `src/gui` is present.  
    - If you use a different branch for production, switch Vercel’s **Production Branch** to one that includes `src/gui`, or merge your code.  
