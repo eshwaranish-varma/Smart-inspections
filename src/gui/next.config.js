@@ -2,7 +2,12 @@ const fs = require("fs");
 const path = require("path");
 
 // Load monorepo root `.env` so one file works for local dev (same template as Docker Compose).
-require("dotenv").config({ path: path.join(__dirname, "..", "..", ".env") });
+const rootEnv = path.join(__dirname, "..", "..", ".env");
+const isVercel = process.env.VERCEL === "1";
+const isCI = process.env.CI === "1" || process.env.CI === "true";
+if (!isVercel && !isCI && fs.existsSync(rootEnv)) {
+  require("dotenv").config({ path: rootEnv });
+}
 // Then `src/gui`-local env so vars only in `src/gui/.env` apply during config (middleware edge).
 const guiDir = __dirname;
 for (const name of [".env", ".env.local"]) {
