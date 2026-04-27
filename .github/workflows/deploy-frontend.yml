@@ -133,7 +133,7 @@ jobs:
           if [ -n "${{ secrets.FRONTEND_PRODUCTION_URL }}" ]; then
             U="${{ secrets.FRONTEND_PRODUCTION_URL }}"
           else
-            U="https://smart-inspection.vercel.app"
+            U="https://smart-inspection-team.vercel.app"
           fi
           for i in {1..10}; do
             STATUS=$(curl -sL -o /dev/null -w "%{http_code}" "$U" || echo "000")

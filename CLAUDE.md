@@ -34,3 +34,4 @@
 
 ### If in Doubt
 Ask the user before making any change that could affect functionality, data flow, or application behavior. When uncertain whether a change is purely visual, err on the side of asking.
+
