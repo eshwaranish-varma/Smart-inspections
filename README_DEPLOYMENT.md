@@ -286,6 +286,8 @@ cd src/gui && npm run build
 In Vercel, verify the project **Root Directory** is set to `src/gui` and the **Framework Preset** is **Next.js**.
 Also confirm the Vercel project is linked to the `src/gui` app rather than the repository root, because the repository-root `vercel.json` is not the frontend deployment target.
 
+**If the build fails** with `ENOENT: ... routes-manifest-deterministic.json` (or `routes-manifest.json`) under `/vercel/path0/.next/`: the deployment root does not line up with where `next build` wrote `.next`, or the Vercel build integration is out of date. In order, try: redeploy **without** build cache; ensure the Vercel project’s **Root Directory** is `src/gui` (not the monorepo root); do not pin an old Vercel CLI in project/env (Vercel’s build image should use a current `vercel` package; fixes landed around `vercel@50.38.0` for related Next 16.2 issues). This repo pins **Next.js 16.1.7** in `src/gui/package.json` for a stable Vercel deploy; to try a newer Next line, run `npm run build` in `src/gui` locally and re-test on a preview deploy first.
+
 ### Database Connection Fails
 ```bash
 # 1. Verify DATABASE_URL format
