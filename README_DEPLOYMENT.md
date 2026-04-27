@@ -85,7 +85,7 @@ your-repo/
 |------|---------|-------------|
 | `DEPLOYMENT_SETUP.sh` | One-time GitHub secret setup | First time setup only |
 | `HEALTH_CHECK.sh` | Manual health monitoring | On-call troubleshooting |
-| `vercel.json` | Repository-root Vercel config for non-frontend deployment paths | Do not use this as the frontend project config; set the Vercel Root Directory to `src/gui` |
+| `vercel.json` | Points the Next builder at `src/gui/package.json` when the Vercel **Root Directory** is the **repository root** (empty) | If you instead set Root Directory to `src/gui`, this file is not used for that app; see *Frontend Won’t Deploy* below. |
 | `.env.production` | Environment variables template | Reference only (use GitHub Secrets) |
 
 ---
@@ -283,10 +283,26 @@ cd src/gui && npm run build
 # https://vercel.com/smart-inspection/settings/environment-variables
 ```
 
-In Vercel, verify the project **Root Directory** is set to `src/gui` and the **Framework Preset** is **Next.js**.
-Also confirm the Vercel project is linked to the `src/gui` app rather than the repository root, because the repository-root `vercel.json` is not the frontend deployment target.
+**Vercel Root Directory and this repo (important)**  
+The Next.js app lives in **`src/gui`**. The repository root has a `vercel.json` that points the legacy Next builder at `src/gui/package.json`. You can deploy in one of these ways; **do not mix them in a way that double-nests the path**.
 
-**If the build fails** with `ENOENT: ... routes-manifest-deterministic.json` (or `routes-manifest.json`) under `/vercel/path0/.next/`: the deployment root does not line up with where `next build` wrote `.next`, or the Vercel build integration is out of date. In order, try: redeploy **without** build cache; ensure the Vercel project’s **Root Directory** is `src/gui` (not the monorepo root); do not pin an old Vercel CLI in project/env (Vercel’s build image should use a current `vercel` package; fixes landed around `vercel@50.38.0` for related Next 16.2 issues). This repo pins **Next.js 16.1.7** in `src/gui/package.json` for a stable Vercel deploy; to try a newer Next line, run `npm run build` in `src/gui` locally and re-test on a preview deploy first.
+| Approach | Vercel → Project → General → *Root Directory* | Notes |
+|----------|----------------------------------------------|--------|
+| **A (recommended for this monorepo)** | Leave **empty** (repository root / `.`) | The clone must contain `src/`. The root `vercel.json` `builds` entry selects `src/gui` for `@vercel/next`. **Framework Preset** can be **Next.js**; override **Install/Build** only if you change the layout. |
+| **B** | `src/gui` | Valid only if that folder exists **in the connected Git branch** (confirm on GitHub: you see `src/gui` at the repo root). Vercel runs install/build *inside* that directory; you do not need a second `src/gui` in the path. If this setting fails, the remote repo or branch is missing the folder, or the path/casing is wrong (Linux is case-sensitive). |
+
+**Error: *The specified Root Directory "src/gui" does not exist***  
+Vercel read your Git deployment and did **not** find a `src/gui` path at the repository root. **Fix (pick one):**
+
+1. **Use repository root (simplest with this `vercel.json`)**  
+   - **Settings → General → Root Directory** → clear it (use **Repository Root**), save, redeploy.  
+2. **Keep Root Directory = `src/gui` only if the path really exists in Git**  
+   - In the browser, open the same repo/branch that Vercel uses and confirm `src/gui` is present.  
+   - If you use a different branch for production, switch Vercel’s **Production Branch** to one that includes `src/gui`, or merge your code.  
+   - Fix **folder name casing** if the remote uses e.g. `Src` vs `src` (Vercel runs Linux; mismatches from Windows are a common cause).  
+3. **Confirm the Vercel project is linked to the monorepo** that actually contains the frontend, not a fork or a repo that only has `backend/`.
+
+**If the build fails** with `ENOENT: ... routes-manifest-deterministic.json` (or `routes-manifest.json`) under `/vercel/path0/.next/`: the deployment root and the Next build output are misaligned, or the Vercel/Next integration is out of date. Try: redeploy **without** build cache; set **Root Directory** as in the table above so `next build` runs where `package.json` lives; do not pin an old Vercel CLI in project/env. This repo pins **Next.js 16.1.7** in `src/gui/package.json` for a stable Vercel deploy; to try a newer Next line, run `npm run build` in `src/gui` locally and re-test on a preview deploy first.
 
 ### Database Connection Fails
 ```bash

@@ -107,9 +107,8 @@ BACKEND_BASE_URL="https://your-digitalocean-backend.example.com"
 # 3. Import your GitHub repository
 # 4. Configure:
 #    Framework: Next.js
-#    Root Directory: src/gui
-#    Use the src/gui app, not the repository root vercel.json
-#    Node Version: 18.x
+#    Root Directory: leave empty (repo root) — root vercel.json targets src/gui — OR set to src/gui if that path exists in Git (see README_DEPLOYMENT.md)
+#    Node Version: 20.x (match package engines if you add one)
 # 5. Get your PROJECT_ID and ORG_ID
 
 VERCEL_PROJECT_ID="prj_xxxxx"

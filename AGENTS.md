@@ -106,8 +106,8 @@ Do not invent unnecessary Vercel settings.
 If deployment docs mention the wrong frontend folder or incorrect deployment steps, update only those parts.
 
 Documentation must clearly say:
-- frontend root directory is `src/gui`
-- Vercel project root should be `src/gui`
+- frontend source lives in `src/gui`
+- Vercel **Root Directory** is either **repository root** (empty) with root `vercel.json`, **or** `src/gui` when that path exists in the deployed branch (see `README_DEPLOYMENT.md`)
 - required frontend env vars must include `NEXT_PUBLIC_API_URL`
 
 Do not rewrite docs broadly.
@@ -146,7 +146,7 @@ When done, report using this format:
 
 ### Manual steps still required
 - tell the user to verify in Vercel:
-  - Root Directory = `src/gui`
+  - Root Directory = **empty (repo root)** *or* **`src/gui`** per `README_DEPLOYMENT.md` (whichever matches their deploy; if you see *Root Directory does not exist*, use empty root)
   - Framework Preset = Next.js
   - env vars:
     - `NEXT_PUBLIC_SUPABASE_URL`

@@ -55,8 +55,10 @@ git push origin main
 2. **Add New Project**
 3. Import from Git (select your repo)
 4. **Framework**: Next.js
-5. **Root Directory**: `src/gui`
-6. **Build Command**: `npm run build`
+5. **Root Directory** (pick one):
+   - **Repository root (recommended with this repo):** leave **Root Directory** empty. The root `vercel.json` selects `src/gui` for the build; the clone must include the `src/` tree.
+   - **Subfolder:** set **Root Directory** to `src/gui` only if that path exists on the branch you deploy (see it on GitHub at the repo root). Use `npm run build` with default output.
+6. **Build Command**: `npm run build` (or Vercel’s default; it resolves from the app’s `package.json`)
 7. **Output Directory**: leave blank so Vercel uses the Next.js default
 8. Environment Variables:
    ```
@@ -70,9 +72,8 @@ git push origin main
 9. **Deploy**
 
 Important:
-- Set the Vercel project **Root Directory** to `src/gui`.
+- Either leave **Root Directory** empty and use the repository `vercel.json`, **or** set it to `src/gui` if that folder exists in Git (see `README_DEPLOYMENT.md` if you see *Root Directory does not exist*).
 - Keep the **Framework Preset** as **Next.js**.
-- Do not point the Vercel project at the repository root `vercel.json`; that file is not the frontend app config.
 
 ---
 
@@ -134,7 +135,7 @@ data/raw/*.pdf
 
 - [ ] `backend/.dockerignore` excludes `/data`, `/artifacts`
 - [ ] `backend/requirements-prod.txt` created and tested locally
-- [ ] Vercel project Root Directory is `src/gui`
+- [ ] Vercel project Root Directory is **empty (repo root)** or **`src/gui`** per `README_DEPLOYMENT.md`, and the build succeeds
 - [ ] Environment variables configured in DigitalOcean & Vercel
 - [ ] Backend deployed and `/health` endpoint returns 200
 - [ ] Frontend deployed and loads successfully
