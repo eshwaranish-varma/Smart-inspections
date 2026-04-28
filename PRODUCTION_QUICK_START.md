@@ -107,7 +107,7 @@ BACKEND_BASE_URL="https://your-digitalocean-backend.example.com"
 # 3. Import your GitHub repository
 # 4. Configure:
 #    Framework: Next.js
-#    Root Directory: leave empty (repo root) — root vercel.json targets src/gui — OR set to src/gui if that path exists in Git (see README_DEPLOYMENT.md)
+#    Root Directory: src/gui when that path exists in Git (see README_DEPLOYMENT.md if Vercel says it does not exist)
 #    Node Version: 20.x (match package engines if you add one)
 # 5. Get your PROJECT_ID and ORG_ID
 
@@ -181,6 +181,7 @@ gh run list --workflow=*.yml
 # Trigger or verify backend deployment from your DigitalOcean setup
 
 # Vercel Frontend
+cd src/gui
 vercel --prod --token $VERCEL_TOKEN
 ```
 
@@ -349,9 +350,9 @@ Typical deployment takes:
    # Automatic optimization & CDN caching via Vercel
    ```
 
-3. **Enable caching:**
+3. **Review Vercel and Next.js caching:**
    ```bash
-   # Already enabled in vercel.json headers
+   # Check route-level cache behavior and Vercel deployment settings
    ```
 
 ---
