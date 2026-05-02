@@ -248,6 +248,237 @@ psql "$DATABASE_URL" -c "\dt"
 
 ---
 
+## Hostinger Coolify VPS Deployment
+
+This is the recommended layout if you want to run both app services on a Hostinger VPS with Coolify while keeping Supabase on Supabase's hosted cloud platform. Do not install PostgreSQL on the VPS for this setup; Coolify only runs the frontend and backend containers/apps.
+
+The simplest production layout is two Coolify applications from the same Git repository:
+
+```text
+Hostinger VPS + Coolify
+├─ Frontend: https://app.yourdomain.com  -> src/gui, port 3000
+└─ Backend:  https://api.yourdomain.com  -> backend, port 8000
+
+Supabase Cloud / hosted platform
+└─ Database: external DATABASE_URL
+```
+
+Use two domains/subdomains first. It avoids reverse-proxy ambiguity between Next.js route handlers and FastAPI routes, and it makes CORS easier to reason about.
+
+### Readiness Notes
+
+- Frontend source is `src/gui`; do not point Coolify at `frontend`.
+- The frontend package file is `src/gui/package.json`.
+- The backend API base must be configured without a trailing `/api`; the frontend helper appends `/api`.
+- Supabase is external on Supabase Cloud; do not create a Coolify/Postgres database unless you intentionally migrate away from Supabase.
+- The root `vercel.json` is intentionally absent; Coolify should build the service from each app root.
+
+### Hostinger VPS Prerequisites
+
+1. Create a Hostinger VPS with at least 2 vCPU / 4 GB RAM for this app. Use more RAM if OCR, PDF parsing, or AI/RAG workloads are heavy.
+2. Point DNS records to the VPS:
+   ```text
+   app.yourdomain.com  A  <VPS_PUBLIC_IP>
+   api.yourdomain.com  A  <VPS_PUBLIC_IP>
+   ```
+3. Install Coolify on the VPS using the official Coolify installer.
+4. Connect Coolify to GitHub so it can pull this repository.
+5. Keep the Supabase project on Supabase Cloud and copy its connection values into Coolify environment variables.
+
+### Supabase Cloud Values
+
+Use the Supabase dashboard to collect these values before creating the Coolify apps:
+
+```text
+Project URL:       https://vqelqlrstwrqkhqbwmwh.supabase.co
+Anon/Publishable:  used only by the frontend as NEXT_PUBLIC_SUPABASE_ANON_KEY
+Service role key:  used only by the backend as SUPABASE_KEY
+Database URL:      used by both services as DATABASE_URL
+```
+
+Use a pooled Supabase Postgres connection string for `DATABASE_URL` when possible. Keep `sslmode=require` if Supabase provides or requires it.
+
+### Backend Application
+
+Create a new Coolify application from the same repository.
+
+```text
+Name: smart-inspections-backend
+Source: GitHub repository
+Branch: main
+Base Directory / Root Directory: backend
+Build Pack: Dockerfile if detected, otherwise Nixpacks/Python
+Port: 8000
+Domain: https://api.yourdomain.com
+Health Check Path: /api/health
+```
+
+If Coolify uses Nixpacks/Python instead of a Dockerfile, use:
+
+```bash
+pip install -r requirements.txt
+```
+
+Start command:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Backend environment variables:
+
+```env
+ENVIRONMENT=production
+DATABASE_URL=your_supabase_cloud_postgres_connection_string
+SUPABASE_URL=https://vqelqlrstwrqkhqbwmwh.supabase.co
+SUPABASE_KEY=your_supabase_service_role_key
+JWT_SECRET=your_long_random_jwt_secret
+CORS_ORIGINS=https://app.yourdomain.com,http://localhost:3000
+OPENAI_API_KEY=your_openai_key_if_used
+GOOGLE_API_KEY=your_google_key_if_used
+LLM_PROVIDER=openai
+```
+
+Notes:
+
+- `SUPABASE_KEY` must be the service role key and must stay backend-only.
+- `CORS_ORIGINS` must include the exact frontend origin, including `https://`.
+- If the backend logs show database connection errors, verify the Supabase pooler connection string and SSL settings.
+
+### Frontend Application
+
+Create a second Coolify application from the same repository.
+
+```text
+Name: smart-inspections-frontend
+Source: GitHub repository
+Branch: main
+Base Directory / Root Directory: src/gui
+Build Pack: Dockerfile if detected, otherwise Nixpacks/Node
+Port: 3000
+Domain: https://app.yourdomain.com
+```
+
+If Coolify uses Nixpacks/Node instead of a Dockerfile, use:
+
+```bash
+npm ci
+npm run build
+```
+
+Start command:
+
+```bash
+npm start
+```
+
+Frontend environment variables:
+
+```env
+NEXT_PUBLIC_APP_URL=https://app.yourdomain.com
+NEXT_PUBLIC_API_URL=https://api.yourdomain.com
+BACKEND_API_URL=https://api.yourdomain.com
+NEXT_PUBLIC_SUPABASE_URL=https://vqelqlrstwrqkhqbwmwh.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_or_publishable_key
+DATABASE_URL=your_supabase_cloud_postgres_connection_string
+JWT_SECRET=your_long_random_jwt_secret
+```
+
+Notes:
+
+- `NEXT_PUBLIC_API_URL` is exposed to the browser and should be the public backend origin.
+- `BACKEND_API_URL` is used by server-side Next.js code and should usually match `NEXT_PUBLIC_API_URL` in Coolify.
+- `DATABASE_URL` should point to Supabase Cloud, not to a database on the Hostinger VPS.
+- Do not set `NEXT_PUBLIC_API_URL` to the frontend domain unless you intentionally build a single-domain reverse-proxy setup.
+- Do not include `/api` in `NEXT_PUBLIC_API_URL` or `BACKEND_API_URL`.
+
+### Optional Single-Domain Setup
+
+Only use this after the two-domain setup works. A single-domain setup requires proxy rules equivalent to:
+
+```text
+/api/observations -> FastAPI backend
+/api/ai           -> FastAPI backend
+/api/documents    -> FastAPI backend
+/api/ocr          -> FastAPI backend
+/api/library      -> FastAPI backend
+/api/citations    -> FastAPI backend
+/api/references   -> FastAPI backend
+/api/health       -> FastAPI backend
+/api/eval         -> FastAPI backend
+/api/evaluation   -> FastAPI backend
+everything else   -> Next.js frontend
+```
+
+For a single domain, set:
+
+```env
+NEXT_PUBLIC_APP_URL=https://yourdomain.com
+NEXT_PUBLIC_API_URL=https://yourdomain.com
+BACKEND_API_URL=http://smart-inspections-backend:8000
+CORS_ORIGINS=https://yourdomain.com
+```
+
+Prefer two domains unless you are comfortable maintaining route-level proxy rules.
+
+### Deployment Order
+
+1. Deploy the backend first.
+2. Open `https://api.yourdomain.com/api/health`.
+3. Confirm it returns JSON similar to:
+   ```json
+   {"status":"healthy","kb_loaded":true}
+   ```
+4. Deploy the frontend.
+5. Open `https://app.yourdomain.com`.
+6. Confirm the dashboard no longer shows "Unable to reach the backend API."
+
+### Verification Commands
+
+Run these from your machine after Coolify deploys:
+
+```bash
+curl -i https://api.yourdomain.com/api/health
+curl -i -X OPTIONS "https://api.yourdomain.com/api/health" \
+  -H "Origin: https://app.yourdomain.com" \
+  -H "Access-Control-Request-Method: GET"
+curl -I https://app.yourdomain.com
+```
+
+Expected results:
+
+- Backend health returns `200`.
+- CORS preflight returns `200` or `204`, not `400 Disallowed CORS origin`.
+- Frontend returns `200`, `307`, or `308` depending on auth/domain redirects.
+
+### Troubleshooting
+
+If the frontend calls its own `/api/health` and gets `404`, `NEXT_PUBLIC_API_URL` was missing or wrong when the frontend was built. Fix the env var and redeploy the frontend.
+
+If the browser shows a CORS error, add the frontend domain to backend `CORS_ORIGINS` and redeploy the backend.
+
+If Coolify says the frontend cannot find `package.json`, the frontend root directory is wrong. It must be `src/gui`.
+
+If the backend starts but AI/OCR features fail, check the backend logs for missing `OPENAI_API_KEY`, `GOOGLE_API_KEY`, data path, or OCR dependency messages.
+
+If database-backed pages fail but Supabase is healthy, verify both apps use the same `DATABASE_URL` and that the connection string is valid from the VPS.
+
+### Coolify Go-Live Checklist
+
+- [ ] DNS records point `app.yourdomain.com` and `api.yourdomain.com` to the VPS.
+- [ ] Coolify HTTPS certificates are issued for both domains.
+- [ ] Supabase remains hosted on Supabase Cloud; no Postgres service is created on the Hostinger VPS.
+- [ ] Backend root directory is `backend`.
+- [ ] Frontend root directory is `src/gui`.
+- [ ] Backend health check path is `/api/health`.
+- [ ] Frontend `NEXT_PUBLIC_API_URL` is `https://api.yourdomain.com`.
+- [ ] Backend `CORS_ORIGINS` includes `https://app.yourdomain.com`.
+- [ ] Supabase `DATABASE_URL`, `SUPABASE_URL`, and keys are set in the correct services.
+- [ ] Service role key is only present on the backend.
+- [ ] Dashboard loads without the backend API error.
+
+---
+
 ## 🚨 If Something Goes Wrong
 
 ### Tests Failing

@@ -163,3 +163,13 @@ When done, report using this format:
 6. Do not remove existing workflow steps unless they are incorrect
 7. Every edit must directly support successful frontend deployment
 
+## Temporary Debug Scope
+
+For fixing the Auto-fill Metadata failed fetch issue, the agent may inspect and edit:
+- `src/gui/**`
+- frontend API request code related to OCR/autofill metadata
+
+Allowed change:
+- update frontend OCR request URL from `/api/ocr` to `/api/ocr/`
+
+Do not change backend logic, database code, auth, or unrelated UI behavior.

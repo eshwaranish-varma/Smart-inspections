@@ -124,7 +124,7 @@ export const processOCR = (file: File, isHandwritten: boolean = false) => {
   const fd = new FormData();
   fd.append('file', file);
   fd.append('is_handwritten', String(isHandwritten));
-  return apiFetch<OCRResult>(`${BASE}/ocr`, {
+  return apiFetch<OCRResult>(`${BASE}/ocr/`, {
     method: 'POST',
     body: fd,
     headers: {},
