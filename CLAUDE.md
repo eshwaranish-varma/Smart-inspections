@@ -35,3 +35,28 @@
 ### If in Doubt
 Ask the user before making any change that could affect functionality, data flow, or application behavior. When uncertain whether a change is purely visual, err on the side of asking.
 
+## Temporary Debug Scope
+
+For fixing the Auto-fill Metadata failed fetch issue, the agent may inspect and edit:
+- `src/gui/**`
+- frontend API request code related to OCR/autofill metadata
+
+Allowed change:
+- update frontend OCR request URL from `/api/ocr` to `/api/ocr/`
+
+Do not change backend logic, database code, auth, or unrelated UI behavior.
+
+## Temporary OpenRouter Metadata Extraction Scope
+
+For fixing Auto-fill Metadata, the agent may inspect and edit backend AI metadata extraction code.
+
+Allowed files:
+- backend/source files that define `/api/ai/extract-metadata`
+- backend AI provider/client helper files
+- environment variable documentation only if needed
+
+Allowed change:
+- replace Google/Gemini usage in metadata extraction with existing OpenRouter configuration
+- keep OCR/PyTesseract behavior unchanged
+
+Do not change database schema, auth, frontend UI, routing flow, or unrelated backend endpoints.

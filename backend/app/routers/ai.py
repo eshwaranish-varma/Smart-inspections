@@ -352,6 +352,18 @@ def _get_ai_service() -> AIService:
     )
 
 
+def _get_metadata_ai_service() -> AIService:
+    return AIService(
+        provider="openai",
+        api_key=settings.resolved_openai_api_key,
+        google_api_key="",
+        model=settings.resolved_openai_model,
+        google_model=settings.google_model,
+        temperature=settings.openai_temperature,
+        openai_base_url=settings.resolved_openai_base_url,
+    )
+
+
 def _pipeline_to_draft_observations(
     segmented: list[SegmentedObservation],
     drafted: list[ObservationOutput],
@@ -832,7 +844,7 @@ async def validate_observation(obs: DraftObservation):
 
 @router.post("/extract-metadata", response_model=ExtractMetadataResponse)
 async def extract_metadata(req: ExtractMetadataRequest):
-    ai = _get_ai_service()
+    ai = _get_metadata_ai_service()
     try:
         metadata = ai.extract_inspection_metadata(req.raw_text)
         return ExtractMetadataResponse(metadata=metadata)

@@ -27,11 +27,11 @@ class Settings(BaseSettings):
     #: Alternate env names (e.g. OpenRouter) — see ``resolved_openai_api_key`` / ``resolved_openai_model``.
     openai_router_api_key: str = Field(
         default="",
-        validation_alias=AliasChoices("OPENAI_ROUTER_API_KEY", "openai_router_api_key"),
+        validation_alias=AliasChoices("OPENAI_ROUTER_API_KEY", "OPENROUTER_API_KEY", "openai_router_api_key"),
     )
     openai_router_model: str = Field(
         default="",
-        validation_alias=AliasChoices("OPENAI_ROUTER_MODEL", "openai_router_model"),
+        validation_alias=AliasChoices("OPENAI_ROUTER_MODEL", "OPENROUTER_MODEL", "openai_router_model"),
     )
     #: OpenAI-compatible API base (OpenRouter, Azure OpenAI proxy, etc.). Empty = platform.openai.com.
     openai_compat_base_url: str = Field(
