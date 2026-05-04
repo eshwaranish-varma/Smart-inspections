@@ -14,7 +14,7 @@ def call_llm(prompt: str, *, system: str | None = None) -> str:
     Returns assistant text only.
     """
     svc = AIService(
-        provider=settings.llm_provider,
+        provider=settings.resolved_llm_provider,
         api_key=settings.resolved_openai_api_key,
         google_api_key=settings.google_api_key,
         model=settings.resolved_openai_model,

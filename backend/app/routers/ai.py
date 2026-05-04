@@ -342,7 +342,7 @@ def _apply_title21_citation_match(obs: DraftObservation, citation_service: Citat
 
 def _get_ai_service() -> AIService:
     return AIService(
-        provider=settings.llm_provider,
+        provider=settings.resolved_llm_provider,
         api_key=settings.resolved_openai_api_key,
         google_api_key=settings.google_api_key,
         model=settings.resolved_openai_model,

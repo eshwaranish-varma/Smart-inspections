@@ -44,7 +44,10 @@ class Settings(BaseSettings):
     )
     google_api_key: str = ""
     google_model: str = "gemini-2.0-flash"
-    llm_provider: str = "google"  # "google" or "openai"
+    llm_provider: str = Field(
+        default="google",
+        validation_alias=AliasChoices("LLM_PROVIDER", "llm_provider"),
+    )  # "google", "openai", or OpenAI-compatible providers such as OpenRouter
 
     #: deployment environment — controls which Postgres URL is used when overrides are set
     environment: str = Field(
@@ -238,6 +241,20 @@ class Settings(BaseSettings):
     def resolved_openai_api_key(self) -> str:
         """API key for OpenAI-compatible calls: ``OPENAI_API_KEY``, or ``OPENAI_ROUTER_API_KEY`` if unset."""
         return (self.openai_api_key or "").strip() or (self.openai_router_api_key or "").strip()
+
+    @property
+    def resolved_llm_provider(self) -> str:
+        """Normalize provider config and prefer OpenAI-compatible clients when only OpenRouter/OpenAI keys exist."""
+        provider = (self.llm_provider or "").strip().lower().replace("-", "_").replace(" ", "_")
+        if provider in {"openai", "openrouter", "openai_router", "openai_compatible"}:
+            return "openai"
+        if provider == "google":
+            if self.google_api_key or not self.resolved_openai_api_key:
+                return "google"
+            return "openai"
+        if self.resolved_openai_api_key:
+            return "openai"
+        return "google"
 
     @property
     def resolved_openai_model(self) -> str:
