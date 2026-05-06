@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Inspections — FDA Product Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --green:       #006633;
+      --green-dark:  #004422;
+      --green-light: #e8f5ee;
+      --green-mid:   #1a8a4a;
+      --gold:        #d4a017;
+      --gold-light:  #fdf6e3;
+      --blue:        #1a3f6f;
+      --blue-light:  #e8f0fa;
+      --red:         #c0392b;
+      --red-light:   #fdecea;
+      --text:        #0f1f15;
+      --text-muted:  #4a6358;
+      --bg:          #f4f8f5;
+      --card:        #ffffff;
+      --border:      #c8dfd1;
+      --shadow:      0 4px 32px rgba(0,40,20,0.10);
+      --radius:      14px;
+      --slide-transition: 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #0d1a12;
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ── Progress bar ─────────────────────────────────── */
+    #progress-bar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--green), #00c853);
+      z-index: 100;
+      transition: width 0.3s ease;
+    }
+
+    /* ── Slide counter ────────────────────────────────── */
+    #slide-counter {
+      position: fixed;
+      top: 16px; right: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.55);
+      z-index: 100;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Timer ────────────────────────────────────────── */
+    #timer-badge {
+      position: fixed;
+      top: 12px; left: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.45);
+      z-index: 100;
+      letter-spacing: 0.3px;
+    }
+    #timer-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #00c853;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ── Navigation ───────────────────────────────────── */
+    .nav-btn {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 100;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.7);
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      backdrop-filter: blur(8px);
+    }
+    .nav-btn:hover {
+      background: rgba(255,255,255,0.18);
+      color: #fff;
+    }
+    #btn-prev { left: 16px; }
+    #btn-next { right: 16px; }
+
+    /* ── Slide dots ───────────────────────────────────── */
+    #dots {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 100;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+    .dot.active {
+      background: #00c853;
+      width: 22px;
+      border-radius: 4px;
+    }
+
+    /* ── Slides container ─────────────────────────────── */
+    #slides {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 80px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--slide-transition), transform var(--slide-transition);
+      transform: translateX(40px);
+    }
+    .slide.active {
+      opacity: 1;
+      pointer-events: all;
+      transform: translateX(0);
+    }
+    .slide.exit {
+      opacity: 0;
+      transform: translateX(-40px);
+    }
+
+    /* ── Slide inner layouts ──────────────────────────── */
+    .slide-inner {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* ── Typography helpers ───────────────────────────── */
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #00c853;
+      margin-bottom: 12px;
+    }
+    .slide-title {
+      font-size: clamp(28px, 4vw, 48px);
+      font-weight: 800;
+      line-height: 1.15;
+      color: #ffffff;
+      margin-bottom: 16px;
+    }
+    .slide-subtitle {
+      font-size: clamp(14px, 1.8vw, 20px);
+      font-weight: 400;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.5;
+    }
+    .green { color: #00c853; }
+    .gold  { color: #f0a500; }
+
+    /* ── Cards ────────────────────────────────────────── */
+    .card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      backdrop-filter: blur(8px);
+    }
+    .card-green {
+      background: rgba(0,200,83,0.08);
+      border-color: rgba(0,200,83,0.20);
+    }
+    .card-gold {
+      background: rgba(240,165,0,0.08);
+      border-color: rgba(240,165,0,0.20);
+    }
+    .card-red {
+      background: rgba(220,53,69,0.08);
+      border-color: rgba(220,53,69,0.20);
+    }
+    .card-blue {
+      background: rgba(26,63,111,0.25);
+      border-color: rgba(100,160,255,0.20);
+    }
+
+    /* ── Grid helpers ─────────────────────────────────── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .col-55-45 { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; }
+    .col-45-55 { display: grid; grid-template-columns: 1fr 1.1fr; gap: 40px; align-items: center; }
+
+    /* ── Icon circles ─────────────────────────────────── */
+    .icon-circle {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+    .icon-sm {
+      width: 36px; height: 36px;
+      border-radius: 9px;
+      font-size: 17px;
+    }
+
+    /* ── Step flow ────────────────────────────────────── */
+    .step-flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      justify-content: center;
+    }
+    .step-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+    .step-circle {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      position: relative;
+      border: 2px solid rgba(255,255,255,0.12);
+    }
+    .step-circle.done { background: rgba(0,200,83,0.15); border-color: rgba(0,200,83,0.4); }
+    .step-circle.ai   { background: rgba(100,130,255,0.15); border-color: rgba(100,130,255,0.4); }
+    .step-circle.sup  { background: rgba(240,165,0,0.12); border-color: rgba(240,165,0,0.35); }
+    .step-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.6);
+      text-align: center;
+      letter-spacing: 0.3px;
+      max-width: 70px;
+    }
+    .step-arrow {
+      color: rgba(255,255,255,0.2);
+      font-size: 20px;
+      flex-shrink: 0;
+      padding: 0 4px;
+    }
+
+    /* ── Mock UI panels ───────────────────────────────── */
+    .mock-panel {
+      background: #141f17;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      overflow: hidden;
+      font-size: 12px;
+    }
+    .mock-topbar {
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mock-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .mock-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.4);
+      margin-left: 4px;
+      letter-spacing: 0.3px;
+    }
+    .mock-body { padding: 16px; }
+
+    /* ── Badge ────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+    .badge-green { background: rgba(0,200,83,0.15); color: #00c853; border: 1px solid rgba(0,200,83,0.3); }
+    .badge-gold  { background: rgba(240,165,0,0.15); color: #f0a500; border: 1px solid rgba(240,165,0,0.3); }
+    .badge-blue  { background: rgba(100,160,255,0.15); color: #6aa0ff; border: 1px solid rgba(100,160,255,0.3); }
+    .badge-red   { background: rgba(220,53,69,0.15); color: #e05a6a; border: 1px solid rgba(220,53,69,0.3); }
+
+    /* ── Stat blocks ──────────────────────────────────── */
+    .stat-val {
+      font-size: clamp(32px, 4vw, 52px);
+      font-weight: 900;
+      line-height: 1;
+      color: #ffffff;
+    }
+    .stat-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.5);
+      margin-top: 4px;
+    }
+
+    /* ── Audit row ────────────────────────────────────── */
+    .audit-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .audit-row:last-child { border-bottom: none; }
+    .audit-line {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .audit-node {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      border: 2px solid;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+    .audit-connector {
+      width: 2px;
+      flex: 1;
+      background: rgba(255,255,255,0.08);
+      min-height: 24px;
+    }
+    .audit-text { font-size: 12px; color: rgba(255,255,255,0.6); }
+    .audit-time { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+
+    /* ── Observation card ─────────────────────────────── */
+    .obs-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+    .obs-num {
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .obs-text {
+      font-size: 12px;
+      color: rgba(255,255,255,0.80);
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+    .obs-evidence {
+      font-size: 11px;
+      color: rgba(240,165,0,0.8);
+      background: rgba(240,165,0,0.07);
+      border-left: 2px solid rgba(240,165,0,0.4);
+      padding: 6px 10px;
+      border-radius: 0 6px 6px 0;
+      font-style: italic;
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+
+    /* ── CFR citation bar ─────────────────────────────── */
+    .cfr-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .cfr-tag {
+      font-size: 10px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: #6aa0ff;
+      background: rgba(100,160,255,0.12);
+      border: 1px solid rgba(100,160,255,0.25);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .conf-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+    .conf-track {
+      width: 60px; height: 4px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .conf-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: linear-gradient(90deg, #00c853, #69f0ae);
+    }
+    .conf-pct { font-size: 10px; font-weight: 700; color: #00c853; }
+
+    /* ── Form 483 mockup ──────────────────────────────── */
+    .form483-header {
+      background: rgba(26,63,111,0.3);
+      border: 1px solid rgba(100,160,255,0.2);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .form483-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #6aa0ff;
+    }
+    .form483-subtitle {
+      font-size: 10px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 2px;
+    }
+
+    /* ── Pipeline step ────────────────────────────────── */
+    .pipeline-step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+    }
+    .pipeline-icon {
+      font-size: 18px;
+      width: 32px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .pipeline-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.75);
+    }
+    .pipeline-detail {
+      font-size: 10px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 2px;
+    }
+    .pipeline-score {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    /* ── Metric row ───────────────────────────────────── */
+    .metric-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .metric-row:last-child { border-bottom: none; }
+    .metric-label { font-size: 12px; color: rgba(255,255,255,0.55); }
+    .metric-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .metric-track { width: 80px; height: 5px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+    .metric-fill  { height: 100%; border-radius: 3px; }
+    .metric-val   { font-size: 11px; font-weight: 700; color: #fff; width: 36px; text-align: right; }
+
+    /* ── Slide backgrounds ────────────────────────────── */
+    .bg-hero    { background: radial-gradient(ellipse at 60% 40%, #0a3020 0%, #061208 60%, #000 100%); }
+    .bg-problem { background: radial-gradient(ellipse at 30% 60%, #1a0a0a 0%, #060808 70%, #000 100%); }
+    .bg-default { background: radial-gradient(ellipse at 50% 30%, #061a0e 0%, #050e07 70%, #000 100%); }
+    .bg-blue    { background: radial-gradient(ellipse at 40% 40%, #070d1a 0%, #050810 70%, #000 100%); }
+
+    /* ── Responsive tweaks ────────────────────────────── */
+    @media (max-width: 900px) {
+      .slide { padding: 50px 30px; }
+      .col-55-45, .col-45-55 { grid-template-columns: 1fr; gap: 24px; }
+      .grid-3 { grid-template-columns: 1fr 1fr; }
+      .grid-4 { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .slide { padding: 40px 20px; }
+      .grid-2 { grid-template-columns: 1fr; }
+      .grid-3 { grid-template-columns: 1fr; }
+      .step-flow { flex-wrap: wrap; gap: 12px; }
+      .step-arrow { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Progress bar -->
+<div id="progress-bar" style="width: 10%"></div>
+
+<!-- Timer -->
+<div id="timer-badge">
+  <div id="timer-dot"></div>
+  <span id="timer-display">5:00</span>
+</div>
+
+<!-- Slide counter -->
+<div id="slide-counter">1 / 10</div>
+
+<!-- Navigation -->
+<button class="nav-btn" id="btn-prev" onclick="changeSlide(-1)">&#8592;</button>
+<button class="nav-btn" id="btn-next" onclick="changeSlide(1)">&#8594;</button>
+
+<!-- Dots -->
+<div id="dots"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SLIDES
+     ═══════════════════════════════════════════════════════ -->
+<div id="slides">
+
+  <!-- ── SLIDE 1: TITLE ─────────────────────────────────── -->
+  <section class="slide bg-hero active" data-idx="0">
+    <div class="slide-inner" style="text-align:center; max-width:800px;">
+      <div style="display:inline-flex; align-items:center; gap:10px; margin-bottom:28px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#006633,#00c853);display:flex;align-items:center;justify-content:center;font-size:22px;">🔬</div>
+        <span style="font-size:18px;font-weight:800;color:#fff;letter-spacing:-0.3px;">Smart Inspections</span>
+        <span class="badge badge-green">FDA</span>
+      </div>
+
+      <h1 class="slide-title" style="font-size:clamp(34px,5vw,62px);margin-bottom:20px;">
+        AI-Assisted<br/><span class="green">FDA Inspection</span><br/>Documentation
+      </h1>
+
+      <p class="slide-subtitle" style="max-width:560px;margin:0 auto 36px;">
+        From field notes to official Form 483 &amp; EIR documents —<br/>in minutes, not days. Grounded in <span class="green">Title 21 CFR</span>.
+      </p>
+
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <div class="badge badge-green" style="padding:7px 16px;font-size:12px;">⏱ 5-Minute Demo</div>
+        <div class="badge badge-blue" style="padding:7px 16px;font-size:12px;">📋 Form 483 + EIR</div>
+        <div class="badge badge-gold" style="padding:7px 16px;font-size:12px;">🤖 AI + Human Review</div>
+      </div>
+
+      <p style="margin-top:40px;font-size:12px;color:rgba(255,255,255,0.25);letter-spacing:0.3px;">Press → or click the arrow to begin</p>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 2: THE PROBLEM ───────────────────────────── -->
+  <section class="slide bg-problem" data-idx="1">
+    <div class="slide-inner">
+      <div class="eyebrow">The Problem</div>
+      <h2 class="slide-title">Manual inspection documentation<br/>is broken</h2>
+      <p class="slide-subtitle" style="margin-bottom:36px;">FDA investigators spend more time writing reports than inspecting facilities.</p>
+
+      <div class="grid-3" style="margin-bottom:32px;">
+        <div class="card card-red">
+          <div class="icon-circle" style="background:rgba(220,53,69,0.15);">⏰</div>
+          <div style="font-size:clamp(26px,3vw,38px);font-weight:900;color:#fff;margin-bottom:4px;">6–8 hrs</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.5);">to write a single Form 483 or EIR manually</div>
+        </div>
+        <div class="card card-red">
+          <div class="icon-circle" style="background:rgba(220,53,69,0.15);">⚠️</div>
+          <div style="font-size:clamp(26px,3vw,38px);font-weight:900;color:#fff;margin-bottom:4px;">~40%</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.5);">of citations mismatched or missing regulatory basis</div>
+        </div>
+        <div class="card card-red">
+          <div class="icon-circle" style="background:rgba(220,53,69,0.15);">🔍</div>
+          <div style="font-size:clamp(26px,3vw,38px);font-weight:900;color:#fff;margin-bottom:4px;">No trail</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.5);">incomplete audit trails and hard-to-track document versions</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;align-items:center;gap:16px;">
+        <span style="font-size:28px;">💡</span>
+        <p style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.5;">
+          <strong style="color:#fff;">Smart Inspections</strong> replaces the manual copy-paste cycle with an AI pipeline that drafts, cites, and organizes — while keeping the investigator in full control.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 3: HOW IT WORKS (WORKFLOW) ──────────────── -->
+  <section class="slide bg-default" data-idx="2">
+    <div class="slide-inner">
+      <div class="eyebrow">How It Works</div>
+      <h2 class="slide-title">A complete end-to-end workflow</h2>
+      <p class="slide-subtitle" style="margin-bottom:40px;">Six steps from inspection start to final archived document.</p>
+
+      <div class="step-flow" style="margin-bottom:36px;">
+        <div class="step-box">
+          <div class="step-circle done">📝</div>
+          <div class="step-label">Create Inspection</div>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step-box">
+          <div class="step-circle done">📁</div>
+          <div class="step-label">Upload Evidence</div>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step-box">
+          <div class="step-circle ai">🤖</div>
+          <div class="step-label">AI Drafts 483</div>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step-box">
+          <div class="step-circle sup">👁</div>
+          <div class="step-label">Review &amp; Edit</div>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step-box">
+          <div class="step-circle sup">✍️</div>
+          <div class="step-label">Sign &amp; Approve</div>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step-box">
+          <div class="step-circle done">📤</div>
+          <div class="step-label">Export &amp; Archive</div>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card card-green">
+          <div style="font-size:20px;margin-bottom:8px;">🤖</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;">AI-Powered Drafting</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.5);">LLM generates observations from your notes, one at a time, with CFR citations</div>
+        </div>
+        <div class="card card-gold">
+          <div style="font-size:20px;margin-bottom:8px;">👤</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;">Human in the Loop</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.5);">Investigator &amp; supervisor review every observation before finalization</div>
+        </div>
+        <div class="card card-blue">
+          <div style="font-size:20px;margin-bottom:8px;">📜</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;">Regulatory Grounding</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.5);">Every draft grounded in Title 21 CFR and FDA Investigations Operations Manual</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 4: EVIDENCE UPLOAD + OCR ────────────────── -->
+  <section class="slide bg-default" data-idx="3">
+    <div class="slide-inner col-55-45">
+      <div>
+        <div class="eyebrow">Step 1 — Evidence Capture</div>
+        <h2 class="slide-title">Upload anything. <span class="green">Extract instantly.</span></h2>
+        <p class="slide-subtitle" style="margin-bottom:24px;">Investigators upload field notes, photos, and PDFs. OCR extracts every word automatically.</p>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="icon-circle icon-sm" style="background:rgba(0,200,83,0.12);border-radius:8px;">📄</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#fff;">PDF Field Notes</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.45);">PyMuPDF extracts text with layout preservation</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="icon-circle icon-sm" style="background:rgba(0,200,83,0.12);border-radius:8px;">📸</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#fff;">Photos &amp; Scanned Images</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.45);">Tesseract OCR + OpenCV preprocessing</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="icon-circle icon-sm" style="background:rgba(0,200,83,0.12);border-radius:8px;">📝</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#fff;">Direct Text Notes</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.45);">Paste or type notes directly into the workspace</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="mock-panel">
+          <div class="mock-topbar">
+            <div class="mock-dot" style="background:#ff5f57"></div>
+            <div class="mock-dot" style="background:#ffbd2e"></div>
+            <div class="mock-dot" style="background:#28c840"></div>
+            <div class="mock-title">Upload Evidence — Inspection #INS-2025-044</div>
+          </div>
+          <div class="mock-body">
+            <div style="border:2px dashed rgba(0,200,83,0.3);border-radius:8px;padding:20px;text-align:center;margin-bottom:12px;background:rgba(0,200,83,0.04);">
+              <div style="font-size:24px;margin-bottom:6px;">📂</div>
+              <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.6);">Drag &amp; drop files or click to upload</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:4px;">PDF, JPG, PNG, DOCX supported</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(0,200,83,0.07);border-radius:6px;border:1px solid rgba(0,200,83,0.18);">
+                <span style="font-size:14px;">📄</span>
+                <span style="font-size:11px;color:rgba(255,255,255,0.7);flex:1;">field-notes-day1.pdf</span>
+                <span class="badge badge-green" style="font-size:9px;padding:2px 7px;">✓ Extracted</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(0,200,83,0.07);border-radius:6px;border:1px solid rgba(0,200,83,0.18);">
+                <span style="font-size:14px;">📸</span>
+                <span style="font-size:11px;color:rgba(255,255,255,0.7);flex:1;">cleanroom-photo-003.jpg</span>
+                <span class="badge badge-green" style="font-size:9px;padding:2px 7px;">✓ OCR Done</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(100,160,255,0.06);border-radius:6px;border:1px solid rgba(100,160,255,0.18);">
+                <span style="font-size:14px;">📄</span>
+                <span style="font-size:11px;color:rgba(255,255,255,0.7);flex:1;">batch-records-q4.pdf</span>
+                <span class="badge badge-blue" style="font-size:9px;padding:2px 7px;">⟳ Processing</span>
+              </div>
+            </div>
+            <div style="margin-top:12px;text-align:right;">
+              <div style="display:inline-block;background:linear-gradient(135deg,#006633,#00a844);color:#fff;font-size:11px;font-weight:700;padding:7px 18px;border-radius:7px;cursor:pointer;">
+                Generate AI Draft →
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 5: AI OBSERVATION DRAFTING ──────────────── -->
+  <section class="slide bg-blue" data-idx="4">
+    <div class="slide-inner col-45-55">
+      <div>
+        <div class="eyebrow">Step 2 — AI Drafting</div>
+        <h2 class="slide-title">Observations drafted with <span class="green">regulatory citations</span></h2>
+        <p class="slide-subtitle" style="margin-bottom:24px;">The AI reads your notes, identifies each distinct issue, and writes a formal FDA 483 observation — cited to the exact Title 21 CFR section.</p>
+
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="pipeline-step">
+            <div class="pipeline-icon">🔍</div>
+            <div>
+              <div class="pipeline-label">Segmentation</div>
+              <div class="pipeline-detail">Notes split into discrete issues</div>
+            </div>
+            <div class="pipeline-score" style="color:#00c853;">4 observations</div>
+          </div>
+          <div class="pipeline-step">
+            <div class="pipeline-icon">📚</div>
+            <div>
+              <div class="pipeline-label">Knowledge Retrieval</div>
+              <div class="pipeline-detail">IOM + Title 21 CFR context fetched</div>
+            </div>
+            <div class="pipeline-score" style="color:#6aa0ff;">8 chunks</div>
+          </div>
+          <div class="pipeline-step">
+            <div class="pipeline-icon">✍️</div>
+            <div>
+              <div class="pipeline-label">Draft Generation</div>
+              <div class="pipeline-detail">Gemini / GPT-4 writes formal text</div>
+            </div>
+            <div class="pipeline-score" style="color:#f0a500;">~12 sec</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="mock-panel">
+          <div class="mock-topbar">
+            <div class="mock-dot" style="background:#ff5f57"></div>
+            <div class="mock-dot" style="background:#ffbd2e"></div>
+            <div class="mock-dot" style="background:#28c840"></div>
+            <div class="mock-title">Draft Workspace — Form 483 Observations</div>
+          </div>
+          <div class="mock-body">
+            <div class="obs-card">
+              <div class="obs-num">Observation 1 of 4</div>
+              <div class="obs-text">
+                Failure to establish written procedures for production and process controls designed to assure that the drug products have the identity, strength, quality, and purity they purport or are represented to possess.
+              </div>
+              <div class="obs-evidence">
+                "Batch record MFG-2024-089 lacked a documented step for in-process pH verification prior to filling."
+              </div>
+              <div class="cfr-bar">
+                <span class="cfr-tag">21 CFR 211.100(a)</span>
+                <span class="cfr-tag">21 CFR 211.68</span>
+                <div class="conf-bar">
+                  <span style="font-size:10px;color:rgba(255,255,255,0.35);">Confidence</span>
+                  <div class="conf-track"><div class="conf-fill" style="width:91%"></div></div>
+                  <span class="conf-pct">91%</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:4px;">
+              <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:7px;padding:8px 12px;font-size:11px;color:rgba(255,255,255,0.5);cursor:pointer;">✏️ Edit</div>
+              <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:7px;padding:8px 12px;font-size:11px;color:rgba(255,255,255,0.5);cursor:pointer;">🔄 Refine</div>
+              <div style="flex:1;background:rgba(0,200,83,0.12);border:1px solid rgba(0,200,83,0.25);border-radius:7px;padding:8px 12px;font-size:11px;color:#00c853;cursor:pointer;font-weight:600;">✓ Accept</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 6: FORM 483 ──────────────────────────────── -->
+  <section class="slide bg-default" data-idx="5">
+    <div class="slide-inner col-55-45">
+      <div>
+        <div class="eyebrow">Step 3 — Official Document</div>
+        <h2 class="slide-title">One click to <span class="green">Form FDA 483</span></h2>
+        <p class="slide-subtitle" style="margin-bottom:24px;">Accepted observations are auto-formatted into the official FDA Form 483 layout and exported as a signed .docx ready for issuance.</p>
+
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:20px;">📋</span>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#fff;">Official FDA format</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.4);">Matches FDA 483a Word template exactly</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:20px;">🔗</span>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#fff;">CFR citations embedded</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.4);">Every observation linked to its regulatory basis</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:20px;">📤</span>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#fff;">Export as .docx</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.4);">Download, print, or archive in document library</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="mock-panel">
+          <div class="mock-topbar">
+            <div class="mock-dot" style="background:#ff5f57"></div>
+            <div class="mock-dot" style="background:#ffbd2e"></div>
+            <div class="mock-dot" style="background:#28c840"></div>
+            <div class="mock-title">Form FDA 483 Preview</div>
+          </div>
+          <div class="mock-body">
+            <div class="form483-header">
+              <div>
+                <div class="form483-title">FORM FDA 483</div>
+                <div class="form483-subtitle">Inspectional Observations</div>
+              </div>
+              <div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.35);">Date Issued</div>
+                <div style="font-size:12px;font-weight:700;color:#6aa0ff;">05/06/2025</div>
+              </div>
+            </div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:8px;">ESTABLISHMENT INSPECTED: Pharma Corp Inc., Rockville, MD</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.07);">FEI: 3004584211 &nbsp;|&nbsp; INVESTIGATOR: J. Harrison &nbsp;|&nbsp; 21 U.S.C.</div>
+            <div style="margin-bottom:8px;">
+              <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:1px;margin-bottom:6px;">OBSERVATION 1</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.75);line-height:1.5;margin-bottom:6px;">
+                Failure to establish written procedures for production and process controls designed to assure drug product identity, strength, quality, and purity.
+              </div>
+              <div style="display:flex;gap:6px;">
+                <span class="cfr-tag" style="font-size:9px;">21 CFR 211.100(a)</span>
+                <span style="font-size:10px;color:rgba(255,255,255,0.3);margin-left:4px;">Evidence: 3 records</span>
+              </div>
+            </div>
+            <div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
+              <div style="font-size:10px;color:rgba(255,255,255,0.3);">4 observations total</div>
+              <div style="background:linear-gradient(135deg,#006633,#00a844);color:#fff;font-size:10px;font-weight:700;padding:5px 14px;border-radius:6px;cursor:pointer;">⬇ Export .docx</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 7: EIR GENERATION ────────────────────────── -->
+  <section class="slide bg-blue" data-idx="6">
+    <div class="slide-inner col-45-55">
+      <div>
+        <div class="eyebrow">Step 4 — EIR Generation</div>
+        <h2 class="slide-title">Full <span class="green">Establishment Inspection Report</span> from 483</h2>
+        <p class="slide-subtitle" style="margin-bottom:24px;">Smart Inspections auto-generates the complete EIR narrative from your Form 483 observations — with IOM context and regulatory background woven in.</p>
+
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:22px;">📖</span>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#fff;">Full narrative generation</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.4);">Intro, coverage, observations, and conclusion sections</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:22px;">📊</span>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#fff;">Coverage analysis</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.4);">Ensures all 483 findings are reflected in the narrative</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:22px;">📚</span>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#fff;">IOM-grounded context</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.4);">Retrieves relevant IOM sections for regulatory background</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="mock-panel">
+          <div class="mock-topbar">
+            <div class="mock-dot" style="background:#ff5f57"></div>
+            <div class="mock-dot" style="background:#ffbd2e"></div>
+            <div class="mock-dot" style="background:#28c840"></div>
+            <div class="mock-title">Establishment Inspection Report (EIR)</div>
+          </div>
+          <div class="mock-body">
+            <div style="margin-bottom:12px;">
+              <div style="font-size:10px;font-weight:700;color:#6aa0ff;letter-spacing:1px;margin-bottom:4px;">COVERAGE OF INSPECTION</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.7);line-height:1.6;">
+                The inspection covered all manufacturing areas of the facility including the sterile filling suite, QC laboratory, and warehouse. Records reviewed included batch records for Q3–Q4 2024, SOPs for process validation, and equipment calibration logs...
+              </div>
+            </div>
+            <div style="margin-bottom:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.07);">
+              <div style="font-size:10px;font-weight:700;color:#6aa0ff;letter-spacing:1px;margin-bottom:4px;">OBSERVATIONS &amp; DISCUSSION</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.7);line-height:1.6;">
+                Investigators noted deficiencies in written production control procedures in accordance with 21 CFR 211.100(a). Management acknowledged the observation and indicated corrective actions would be implemented within 30 days...
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span class="badge badge-green">4 / 4 observations covered</span>
+              <span class="badge badge-blue">IOM §5 referenced</span>
+              <div style="margin-left:auto;background:linear-gradient(135deg,#006633,#00a844);color:#fff;font-size:10px;font-weight:700;padding:5px 14px;border-radius:6px;cursor:pointer;">⬇ Export EIR .docx</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 8: REVIEW + SIGNATURES ──────────────────── -->
+  <section class="slide bg-default" data-idx="7">
+    <div class="slide-inner col-55-45">
+      <div>
+        <div class="eyebrow">Step 5 — Review &amp; Approval</div>
+        <h2 class="slide-title">Supervisor review with full <span class="green">audit trail</span></h2>
+        <p class="slide-subtitle" style="margin-bottom:24px;">Every document goes through supervisor approval with threaded comments, rework requests, and electronic signatures.</p>
+
+        <div class="grid-2" style="gap:12px;">
+          <div class="card card-green" style="padding:14px;">
+            <div style="font-size:18px;margin-bottom:6px;">✅</div>
+            <div style="font-size:12px;font-weight:700;color:#fff;">Approve</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:3px;">Supervisor signs and advances to final</div>
+          </div>
+          <div class="card card-gold" style="padding:14px;">
+            <div style="font-size:18px;margin-bottom:6px;">🔁</div>
+            <div style="font-size:12px;font-weight:700;color:#fff;">Request Rework</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:3px;">Send back with specific comments</div>
+          </div>
+          <div class="card card-blue" style="padding:14px;">
+            <div style="font-size:18px;margin-bottom:6px;">💬</div>
+            <div style="font-size:12px;font-weight:700;color:#fff;">Threaded Comments</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:3px;">Inline discussion on any section</div>
+          </div>
+          <div class="card" style="padding:14px;">
+            <div style="font-size:18px;margin-bottom:6px;">✍️</div>
+            <div style="font-size:12px;font-weight:700;color:#fff;">E-Signature</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:3px;">Captured and stored with timestamp</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="mock-panel">
+          <div class="mock-topbar">
+            <div class="mock-dot" style="background:#ff5f57"></div>
+            <div class="mock-dot" style="background:#ffbd2e"></div>
+            <div class="mock-dot" style="background:#28c840"></div>
+            <div class="mock-title">Audit Trail — INS-2025-044</div>
+          </div>
+          <div class="mock-body">
+            <div class="audit-row">
+              <div class="audit-line">
+                <div class="audit-node" style="border-color:#00c853;background:rgba(0,200,83,0.2);"></div>
+                <div class="audit-connector"></div>
+              </div>
+              <div>
+                <div class="audit-text"><strong style="color:#fff;">J. Harrison</strong> created inspection</div>
+                <div class="audit-time">2025-05-06 08:14 UTC</div>
+              </div>
+            </div>
+            <div class="audit-row">
+              <div class="audit-line">
+                <div class="audit-node" style="border-color:#6aa0ff;background:rgba(100,160,255,0.2);"></div>
+                <div class="audit-connector"></div>
+              </div>
+              <div>
+                <div class="audit-text">Evidence uploaded (3 files, OCR complete)</div>
+                <div class="audit-time">2025-05-06 09:02 UTC</div>
+              </div>
+            </div>
+            <div class="audit-row">
+              <div class="audit-line">
+                <div class="audit-node" style="border-color:#a855f7;background:rgba(168,85,247,0.2);"></div>
+                <div class="audit-connector"></div>
+              </div>
+              <div>
+                <div class="audit-text">AI generated 4 observations (Form 483)</div>
+                <div class="audit-time">2025-05-06 09:04 UTC</div>
+              </div>
+            </div>
+            <div class="audit-row">
+              <div class="audit-line">
+                <div class="audit-node" style="border-color:#f0a500;background:rgba(240,165,0,0.2);"></div>
+                <div class="audit-connector"></div>
+              </div>
+              <div>
+                <div class="audit-text"><strong style="color:#fff;">M. Patel (Supervisor)</strong> requested rework</div>
+                <div class="audit-time">2025-05-06 11:30 UTC</div>
+              </div>
+            </div>
+            <div class="audit-row">
+              <div class="audit-line">
+                <div class="audit-node" style="border-color:#00c853;background:rgba(0,200,83,0.3);"></div>
+              </div>
+              <div>
+                <div class="audit-text"><strong style="color:#fff;">M. Patel (Supervisor)</strong> approved &amp; signed ✍️</div>
+                <div class="audit-time">2025-05-06 14:55 UTC</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 9: AI TRANSPARENCY ──────────────────────── -->
+  <section class="slide bg-blue" data-idx="8">
+    <div class="slide-inner">
+      <div class="eyebrow">Transparency &amp; Quality Assurance</div>
+      <h2 class="slide-title">AI that shows its work</h2>
+      <p class="slide-subtitle" style="margin-bottom:32px;">Every AI-generated observation comes with explainability metrics — investigators see exactly what evidence and regulations the AI used.</p>
+
+      <div class="col-55-45" style="gap:24px;">
+        <div>
+          <div class="card card-blue" style="margin-bottom:16px;">
+            <div style="font-size:12px;font-weight:700;color:#6aa0ff;margin-bottom:12px;">📊 Evaluation Metrics — Obs. 1</div>
+            <div class="metric-row">
+              <div class="metric-label">Evidence Precision</div>
+              <div class="metric-bar-wrap">
+                <div class="metric-track"><div class="metric-fill" style="width:89%;background:#00c853;"></div></div>
+                <div class="metric-val">89%</div>
+              </div>
+            </div>
+            <div class="metric-row">
+              <div class="metric-label">Grounding Recall</div>
+              <div class="metric-bar-wrap">
+                <div class="metric-track"><div class="metric-fill" style="width:93%;background:#00c853;"></div></div>
+                <div class="metric-val">93%</div>
+              </div>
+            </div>
+            <div class="metric-row">
+              <div class="metric-label">CFR Match Score</div>
+              <div class="metric-bar-wrap">
+                <div class="metric-track"><div class="metric-fill" style="width:91%;background:#6aa0ff;"></div></div>
+                <div class="metric-val">91%</div>
+              </div>
+            </div>
+            <div class="metric-row">
+              <div class="metric-label">Overall Confidence</div>
+              <div class="metric-bar-wrap">
+                <div class="metric-track"><div class="metric-fill" style="width:91%;background:#f0a500;"></div></div>
+                <div class="metric-val">91%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="card" style="padding:16px;">
+            <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:8px;">RETRIEVED EVIDENCE CHUNKS</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.7);line-height:1.5;border-left:2px solid rgba(0,200,83,0.4);padding-left:10px;font-style:italic;margin-bottom:6px;">
+              "Batch record MFG-2024-089 lacked a documented step for in-process pH verification..."
+            </div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.3);">Source: field-notes-day1.pdf · Score: 0.94</div>
+          </div>
+          <div class="card" style="padding:16px;">
+            <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:8px;">CFR CANDIDATE MATCHES</div>
+            <div style="display:flex;flex-direction:column;gap:5px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="cfr-tag">21 CFR 211.100(a)</span>
+                <span style="font-size:10px;color:#00c853;">0.91 match</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="cfr-tag">21 CFR 211.68</span>
+                <span style="font-size:10px;color:#00c853;">0.87 match</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 10: SUMMARY ──────────────────────────────── -->
+  <section class="slide bg-hero" data-idx="9">
+    <div class="slide-inner">
+      <div class="eyebrow">Summary</div>
+      <h2 class="slide-title" style="margin-bottom:8px;">Everything your team needs<br/><span class="green">in one platform</span></h2>
+      <p class="slide-subtitle" style="margin-bottom:36px;">From evidence to signed document — faster, more accurate, fully traceable.</p>
+
+      <div class="grid-4" style="margin-bottom:32px;">
+        <div class="card" style="text-align:center;padding:20px 12px;">
+          <div class="stat-val" style="color:#00c853;">~90%</div>
+          <div class="stat-label">less time drafting observations</div>
+        </div>
+        <div class="card" style="text-align:center;padding:20px 12px;">
+          <div class="stat-val" style="color:#6aa0ff;">100%</div>
+          <div class="stat-label">Title 21 CFR citation coverage</div>
+        </div>
+        <div class="card" style="text-align:center;padding:20px 12px;">
+          <div class="stat-val" style="color:#f0a500;">Full</div>
+          <div class="stat-label">immutable audit trail &amp; versioning</div>
+        </div>
+        <div class="card" style="text-align:center;padding:20px 12px;">
+          <div class="stat-val" style="color:#fff;">2-in-1</div>
+          <div class="stat-label">Form 483 + EIR from one workflow</div>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card card-green" style="padding:16px;">
+          <div style="font-size:20px;margin-bottom:8px;">🔬</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;">For Investigators</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.5;">Upload notes → AI drafts → review &amp; submit. No blank-page syndrome.</div>
+        </div>
+        <div class="card card-gold" style="padding:16px;">
+          <div style="font-size:20px;margin-bottom:8px;">👔</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;">For Supervisors</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.5;">Approve, rework, or comment. Full version history and e-signature.</div>
+        </div>
+        <div class="card card-blue" style="padding:16px;">
+          <div style="font-size:20px;margin-bottom:8px;">🏛️</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;">For Compliance</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.5;">Immutable audit logs, grounded citations, document library. Always defensible.</div>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-top:28px;">
+        <div style="display:inline-flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#006633,#00c853);display:flex;align-items:center;justify-content:center;font-size:16px;">🔬</div>
+          <span style="font-size:16px;font-weight:800;color:#fff;">Smart Inspections</span>
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:6px;">AI-Assisted FDA Inspection Documentation Platform</div>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /slides -->
+
+<script>
+  const SLIDES = document.querySelectorAll('.slide');
+  const TOTAL  = SLIDES.length;
+  let current  = 0;
+  let timerInterval = null;
+  let secondsLeft = 5 * 60;
+
+  /* ── Dots ─────────────────────────────────────────────── */
+  const dotsEl = document.getElementById('dots');
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  }
+
+  function updateDots() {
+    dotsEl.querySelectorAll('.dot').forEach((d, i) => {
+      d.classList.toggle('active', i === current);
+    });
+  }
+
+  /* ── Timer ────────────────────────────────────────────── */
+  function startTimer() {
+    if (timerInterval) return;
+    timerInterval = setInterval(() => {
+      secondsLeft = Math.max(0, secondsLeft - 1);
+      const m = Math.floor(secondsLeft / 60);
+      const s = secondsLeft % 60;
+      document.getElementById('timer-display').textContent =
+        m + ':' + (s < 10 ? '0' : '') + s;
+      if (secondsLeft === 0) {
+        clearInterval(timerInterval);
+        document.getElementById('timer-dot').style.background = '#e05a6a';
+      }
+    }, 1000);
+  }
+
+  /* ── Navigation ───────────────────────────────────────── */
+  function goTo(idx) {
+    if (idx < 0 || idx >= TOTAL) return;
+    if (idx === 0) startTimer();
+
+    SLIDES[current].classList.remove('active');
+    SLIDES[current].classList.add('exit');
+    const prev = current;
+    current = idx;
+
+    // Clean exit class after animation
+    setTimeout(() => { SLIDES[prev].classList.remove('exit'); }, 500);
+
+    SLIDES[current].classList.add('active');
+    document.getElementById('slide-counter').textContent =
+      (current + 1) + ' / ' + TOTAL;
+    document.getElementById('progress-bar').style.width =
+      ((current + 1) / TOTAL * 100) + '%';
+    document.getElementById('btn-prev').style.opacity = current === 0 ? '0.2' : '1';
+    document.getElementById('btn-next').style.opacity = current === TOTAL-1 ? '0.2' : '1';
+    updateDots();
+  }
+
+  function changeSlide(dir) { goTo(current + dir); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); changeSlide(1); }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); changeSlide(-1); }
+    if (e.key === 'Home') goTo(0);
+    if (e.key === 'End')  goTo(TOTAL - 1);
+  });
+
+  /* ── Initial state ────────────────────────────────────── */
+  document.getElementById('btn-prev').style.opacity = '0.2';
+  goTo(0);
+</script>
+</body>
+</html>
